@@ -31,3 +31,22 @@ loop:
 	}
 	slog.Info("done reading file, test complete")
 }
+
+func TestFileGenerator(t *testing.T) {
+	t.Log("test with no file")
+	for n, err := range File() {
+		slog.Info("received item", "value", n, "error", err)
+	}
+	t.Log("test with one file")
+	for n, err := range File("../../flow/test.txt") {
+		slog.Info("received item", "value", n, "error", err)
+	}
+	t.Log("test with two files")
+	for n, err := range File("../../flow/test.txt", "../../flow/test.txt") {
+		slog.Info("received item", "value", n, "error", err)
+	}
+	t.Log("test with non-existing file")
+	for n, err := range File("../../flow/non_existing.txt") {
+		slog.Info("received item", "value", n, "error", err)
+	}
+}

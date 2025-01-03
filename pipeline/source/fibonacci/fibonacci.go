@@ -2,6 +2,7 @@ package fibonacci
 
 import (
 	"context"
+	"iter"
 	"log/slog"
 	"math/big"
 
@@ -59,4 +60,20 @@ func (s *Source) Emit(ctx context.Context) (<-chan pipeline.Message, error) {
 		}
 	}(ctx)
 	return messages, nil
+}
+
+// Fibonacci uses the new Go 1.23 style generator.
+func Fibonacci(limit int64) iter.Seq[int64] {
+	return func(yield func(int64) bool) {
+		a, b := int64(0), int64(1)
+		for {
+			a, b = b, a+b
+			if a >= limit {
+				break
+			}
+			if !yield(a) {
+				return
+			}
+		}
+	}
 }

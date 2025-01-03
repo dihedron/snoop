@@ -31,3 +31,9 @@ loop:
 	}
 	slog.Info("no more messages")
 }
+
+func TestFibonacciGenerator(t *testing.T) {
+	for n := range Fibonacci(1_000_000_000_000_000_000) {
+		slog.Info("received item", "value", n)
+	}
+}
