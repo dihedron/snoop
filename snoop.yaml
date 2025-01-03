@@ -1,0 +1,59 @@
+rabbitmq:
+  client:
+    id: snoop
+    tag: snoop
+  servers:
+  - address: rmq-1.example.com
+    port: 5672
+    username: guest
+    password: P4$$w0rd
+    tlsinfo:
+      enabled: false
+      skipverify: false
+      cacert: /path/to/cacert.pem
+      privatekey: example.com-key.pem
+      certificate: example.com-cert.pem
+  - address: rmq-2.example.com
+    port: 5672
+    username: guest
+    password: P4$$w0rd
+    tlsinfo:
+      enabled: false
+      skipverify: false
+      cacert: /path/to/cacert.pem
+      privatekey: example.com-key.pem
+      certificate: example.com-cert.pem
+  - address: rmq-2.example.com
+    port: 5672
+    username: guest
+    password: P4$$w0rd
+    tlsinfo:
+      enabled: false
+      skipverify: false
+      cacert: /path/to/cacert.pem
+      privatekey: example.com-key.pem
+      certificate: example.com-cert.pem
+  queue:
+    name: snoop
+    durable: true
+    declare: true
+    exclusive: false
+    autodelete: false
+  bindings:
+  - exchange:
+      name: neutron
+      type: topic
+    routingkeys:
+    - notifications.info
+    - notifications.error
+  - exchange:
+      name: nova
+      type: topic
+    routingkeys:
+    - notifications.info
+    - notifications.error
+  - exchange:
+      name: keystone
+      type: topic
+    routingkeys:
+    - keystone.info
