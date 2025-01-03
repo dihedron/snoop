@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"time"
 )
 
 const MaxIter = 15
@@ -48,5 +49,14 @@ func TestFileGenerator(t *testing.T) {
 	t.Log("test with non-existing file")
 	for n, err := range File("../../flow/non_existing.txt") {
 		slog.Info("received item", "value", n, "error", err)
+	}
+}
+
+func TestFileContextGenerator(t *testing.T) {
+	t.Log("test with cancellation after 10 items")
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	for n, err := range FileContext(ctx, "../../flow/test.txt") {
+		slog.Info("received item", "value", n, "error", err)
+		time.Sleep(100 * time.Millisecond)
 	}
 }

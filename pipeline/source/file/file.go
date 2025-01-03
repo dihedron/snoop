@@ -80,9 +80,46 @@ func File(paths ...string) iter.Seq2[string, error] {
 			for {
 				scanner := bufio.NewScanner(file)
 				for scanner.Scan() {
+
 					text := scanner.Text()
 					if !yield(text, nil) {
 						return
+					}
+				}
+				if err = scanner.Err(); err != nil {
+					yield("", err)
+					return
+				} else {
+					break
+				}
+			}
+		}
+	}
+}
+
+// File uses the new Go 1.23 style generator.
+func FileContext(ctx context.Context, paths ...string) iter.Seq2[string, error] {
+	return func(yield func(string, error) bool) {
+	outer:
+		for _, path := range paths {
+			file, err := os.Open(path)
+			if err != nil {
+				slog.Error("failure opening input file", "path", path, "error", err)
+				yield("", err)
+				return
+			}
+			defer file.Close()
+			for {
+				scanner := bufio.NewScanner(file)
+				for scanner.Scan() {
+					select {
+					case <-ctx.Done():
+						break outer
+					default:
+						text := scanner.Text()
+						if !yield(text, nil) {
+							return
+						}
 					}
 				}
 				if err = scanner.Err(); err != nil {
