@@ -106,7 +106,6 @@ type sequence = Source
 // a Sequence repeating the same value over and over, set Step to 0 and
 // Start as the desired value.
 func Sequence(options ...Option) iter.Seq[int64] {
-
 	settings := &sequence{
 		start: 0,
 		step:  1,
@@ -118,21 +117,14 @@ func Sequence(options ...Option) iter.Seq[int64] {
 	return func(yield func(int64) bool) {
 		value := settings.start
 		for {
-			// select {
-			// case <-ctx.Done():
-			// 	slog.Info("context cancelled")
-			// 	return
-			// default:
-			// slog.Debug("sending sequence number as message", "value", value)
 			if !yield(value) {
 				return
 			}
 			value += settings.step
 			if settings.end > 0 && value >= settings.end {
-				// slog.Debug("end of sequence reached")
-				break
+				//break
+				return
 			}
-			// }
 		}
 	}
 }
@@ -144,7 +136,6 @@ func Sequence(options ...Option) iter.Seq[int64] {
 // Start as the desired value. When the given context is cancelled, the
 // generator stops.
 func SequenceContext(ctx context.Context, options ...Option) iter.Seq[int64] {
-
 	settings := &sequence{
 		start: 0,
 		step:  1,
@@ -155,21 +146,18 @@ func SequenceContext(ctx context.Context, options ...Option) iter.Seq[int64] {
 	}
 	return func(yield func(int64) bool) {
 		value := settings.start
-	outer:
 		for {
 			select {
 			case <-ctx.Done():
-				// slog.Info("context cancelled")
+				slog.Info("cancelling...", "from", settings.start, "to", settings.end, "step", settings.step)
 				return
 			default:
-				slog.Debug("sending sequence number as message", "value", value)
 				if !yield(value) {
 					return
 				}
 				value += settings.step
 				if settings.end > 0 && value >= settings.end {
-					// slog.Debug("end of sequence reached")
-					break outer
+					return
 				}
 			}
 		}

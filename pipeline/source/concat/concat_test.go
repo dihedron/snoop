@@ -36,11 +36,11 @@ func TestConcatSequences(t *testing.T) {
 }
 
 func TestConcatFiles(t *testing.T) {
-	source1, err := file.New("../../engine/a2m.txt")
+	source1, err := file.New("../../flow/a2m.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	source2, err := file.New("../../engine/n2z.txt")
+	source2, err := file.New("../../flow/n2z.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,4 +56,21 @@ func TestConcatFiles(t *testing.T) {
 		}
 	}
 	slog.Info("channel closed (no more messages), test complete")
+}
+
+func TestConcatGenerator(t *testing.T) {
+	for n := range Concat2(file.File("../../flow/a2m.txt"), file.File("../../flow/n2z.txt")) {
+		slog.Info("received item", "value", n)
+	}
+}
+
+func TestConcatGeneratorContext(t *testing.T) {
+	ctx1, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	ctx2, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	for n := range Concat(integer.SequenceContext(ctx1, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx2, integer.From(1), integer.Step(0))) {
+		slog.Info("received item", "value", n)
+		time.Sleep(10 * time.Millisecond)
+	}
 }

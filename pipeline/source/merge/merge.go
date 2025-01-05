@@ -3,7 +3,9 @@ package merge
 import (
 	"context"
 	"io"
+	"iter"
 	"log/slog"
+	"sync"
 
 	"github.com/dihedron/snoop/pipeline"
 )
@@ -105,4 +107,60 @@ func (s *Source) Close() error {
 		}
 	}
 	return nil
+}
+
+// File uses the new Go 1.23 style generator.
+//func Concat2[T any, S any](sequences ...iter.Seq2[T, S]) iter.Seq2[T, S] {
+
+func Merge[T any](ctx context.Context, sequences ...iter.Seq[T]) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		var wg sync.WaitGroup
+		channels := []<-chan T{}
+		for _, sequence := range sequences {
+			wg.Add(1)
+			c := make(chan T)
+			go func(c chan<- T) {
+				for value := range sequence {
+					c <- value
+				}
+				close(c)
+			}(c)
+			channels = append(channels, c)
+		}
+		out := merge(channels...)
+		defer func() {
+			wg.Wait()
+		}()
+		for {
+			select {
+			case value := <-out:
+				slog.Info("forwarding value received from channel", "message", value)
+				if !yield(value) {
+					return
+				}
+			case <-ctx.Done():
+				slog.Info("context closed")
+				return
+			}
+		}
+	}
+}
+
+func merge[T any](cs ...<-chan T) <-chan T {
+	out := make(chan T)
+	var wg sync.WaitGroup
+	wg.Add(len(cs))
+	for _, c := range cs {
+		go func(c <-chan T) {
+			for v := range c {
+				out <- v
+			}
+			wg.Done()
+		}(c)
+	}
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
 }

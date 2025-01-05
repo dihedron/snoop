@@ -36,3 +36,13 @@ loop:
 	}
 	slog.Debug("no more messages, test complete")
 }
+
+func TestMergeContextGenerator(t *testing.T) {
+	t.Log("test with 3 alternating sequences of 0, 1 and 2 and cancellation after ~30 items")
+	ctx, cancel0 := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel0()
+	for n := range Merge(ctx, integer.SequenceContext(ctx, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx, integer.From(1), integer.Step(0)), integer.SequenceContext(ctx, integer.From(2), integer.Step(0))) {
+		t.Logf("received item %d", n)
+		time.Sleep(10 * time.Millisecond)
+	}
+}

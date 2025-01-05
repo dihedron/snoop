@@ -58,3 +58,31 @@ func TestRandom(t *testing.T) {
 	slog.Debug("result", "value", buffer.String())
 	slog.Info("test complete")
 }
+
+func TestRandomGenerator(t *testing.T) {
+	count := 0
+	for n := range Random(0, 1000) {
+		slog.Info("received item", "value", n)
+		if count++; count >= 10 {
+			break
+		}
+	}
+}
+
+func TestRandomContextGenerator(t *testing.T) {
+	t.Log("test with random sequence (from: 0, to: 1000, buffering: 10) and cancellation after ~10 items")
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	for n := range RandomContext(ctx, 0, 1000) {
+		slog.Info("received item", "value", n)
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Log("test with constant sequence (from: 0, to: 1000, buffering: 10) and cancellation after ~10 items")
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	for n := range RandomContext(ctx, 0, 1000) {
+		slog.Info("received item", "value", n)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+}

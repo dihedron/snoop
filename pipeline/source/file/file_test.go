@@ -54,10 +54,10 @@ func TestFileGenerator(t *testing.T) {
 
 func TestFileContextGenerator(t *testing.T) {
 	t.Log("test with cancellation after 10 items")
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	for n, err := range FileContext(ctx, "../../flow/test.txt") {
 		slog.Info("received item", "value", n, "error", err)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 }

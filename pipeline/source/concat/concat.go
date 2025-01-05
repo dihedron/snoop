@@ -3,6 +3,7 @@ package concat
 import (
 	"context"
 	"io"
+	"iter"
 	"log/slog"
 
 	"github.com/dihedron/snoop/pipeline"
@@ -72,4 +73,30 @@ func (s *Source) Close() error {
 		}
 	}
 	return nil
+}
+
+// Concat concatenates multiple single-valued sequences.
+func Concat[T any](sequences ...iter.Seq[T]) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, sequence := range sequences {
+			for value := range sequence {
+				if !yield(value) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// Concat2 concatenates multiple double-valued sequences.
+func Concat2[T any, S any](sequences ...iter.Seq2[T, S]) iter.Seq2[T, S] {
+	return func(yield func(T, S) bool) {
+		for _, sequence := range sequences {
+			for v1, v2 := range sequence {
+				if !yield(v1, v2) {
+					return
+				}
+			}
+		}
+	}
 }
