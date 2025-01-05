@@ -109,9 +109,6 @@ func (s *Source) Close() error {
 	return nil
 }
 
-// File uses the new Go 1.23 style generator.
-//func Concat2[T any, S any](sequences ...iter.Seq2[T, S]) iter.Seq2[T, S] {
-
 func Merge[T any](ctx context.Context, sequences ...iter.Seq[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		var wg sync.WaitGroup
@@ -134,8 +131,46 @@ func Merge[T any](ctx context.Context, sequences ...iter.Seq[T]) iter.Seq[T] {
 		for {
 			select {
 			case value := <-out:
-				slog.Info("forwarding value received from channel", "message", value)
+				slog.Info("forwarding value received from channel", "value", value)
 				if !yield(value) {
+					return
+				}
+			case <-ctx.Done():
+				slog.Info("context closed")
+				return
+			}
+		}
+	}
+}
+
+func Merge2[K any, V any](ctx context.Context, sequences ...iter.Seq2[K, V]) iter.Seq2[K, V] {
+	type pair struct {
+		k K
+		v V
+	}
+	return func(yield func(K, V) bool) {
+		var wg sync.WaitGroup
+		channels := []<-chan pair{}
+		for _, sequence := range sequences {
+			wg.Add(1)
+			c := make(chan pair)
+			go func(c chan<- pair) {
+				for k, v := range sequence {
+					c <- pair{k: k, v: v}
+				}
+				close(c)
+			}(c)
+			channels = append(channels, c)
+		}
+		out := merge(channels...)
+		defer func() {
+			wg.Wait()
+		}()
+		for {
+			select {
+			case value := <-out:
+				slog.Info("forwarding value received from channel", "key", value.k, "value", value.v)
+				if !yield(value.k, value.v) {
 					return
 				}
 			case <-ctx.Done():
