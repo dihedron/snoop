@@ -2,6 +2,7 @@ package integer
 
 import (
 	"context"
+	"iter"
 	"log/slog"
 
 	"github.com/dihedron/snoop/pipeline"
@@ -53,6 +54,10 @@ func Until(end int64) Option {
 	}
 }
 
+// To allows to specify the end value (exclusive); in order to
+// generate an infinite sequence don't set this value.
+var To = Until
+
 // Source is a mock Source that emits the value
 // series one integer at a time.
 type Source struct {
@@ -91,4 +96,82 @@ func (s *Source) Emit(ctx context.Context) (<-chan pipeline.Message, error) {
 	}(ctx)
 	slog.Info("returning sequence channel")
 	return messages, nil
+}
+
+type sequence = Source
+
+// Sequence uses the new Go 1.23 style generator to generate a sequence
+// of integers; it may be configured with functional options. In order
+// to create an infinite sequence provide no end value; in order to create
+// a Sequence repeating the same value over and over, set Step to 0 and
+// Start as the desired value.
+func Sequence(options ...Option) iter.Seq[int64] {
+
+	settings := &sequence{
+		start: 0,
+		step:  1,
+		end:   100,
+	}
+	for _, option := range options {
+		option(settings)
+	}
+	return func(yield func(int64) bool) {
+		value := settings.start
+		for {
+			// select {
+			// case <-ctx.Done():
+			// 	slog.Info("context cancelled")
+			// 	return
+			// default:
+			// slog.Debug("sending sequence number as message", "value", value)
+			if !yield(value) {
+				return
+			}
+			value += settings.step
+			if settings.end > 0 && value >= settings.end {
+				// slog.Debug("end of sequence reached")
+				break
+			}
+			// }
+		}
+	}
+}
+
+// Sequence uses the new Go 1.23 style generator to generate a sequence
+// of integers; it may be configured with functional options. In order
+// to create an infinite sequence provide no end value; in order to create
+// a Sequence repeating the same value over and over, set Step to 0 and
+// Start as the desired value. When the given context is cancelled, the
+// generator stops.
+func SequenceContext(ctx context.Context, options ...Option) iter.Seq[int64] {
+
+	settings := &sequence{
+		start: 0,
+		step:  1,
+		end:   100,
+	}
+	for _, option := range options {
+		option(settings)
+	}
+	return func(yield func(int64) bool) {
+		value := settings.start
+	outer:
+		for {
+			select {
+			case <-ctx.Done():
+				// slog.Info("context cancelled")
+				return
+			default:
+				slog.Debug("sending sequence number as message", "value", value)
+				if !yield(value) {
+					return
+				}
+				value += settings.step
+				if settings.end > 0 && value >= settings.end {
+					// slog.Debug("end of sequence reached")
+					break outer
+				}
+			}
+		}
+	}
 }
