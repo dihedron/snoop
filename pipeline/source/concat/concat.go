@@ -89,11 +89,11 @@ func Concat[T any](sequences ...iter.Seq[T]) iter.Seq[T] {
 }
 
 // Concat2 concatenates multiple double-valued sequences.
-func Concat2[T any, S any](sequences ...iter.Seq2[T, S]) iter.Seq2[T, S] {
-	return func(yield func(T, S) bool) {
+func Concat2[K any, V any](sequences ...iter.Seq2[K, V]) iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
 		for _, sequence := range sequences {
-			for v1, v2 := range sequence {
-				if !yield(v1, v2) {
+			for k, v := range sequence {
+				if !yield(k, v) {
 					return
 				}
 			}
