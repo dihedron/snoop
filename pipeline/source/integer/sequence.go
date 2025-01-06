@@ -105,8 +105,8 @@ type sequence = Source
 // to create an infinite sequence provide no end value; in order to create
 // a Sequence repeating the same value over and over, set Step to 0 and
 // Start as the desired value.
-func Sequence(options ...Option) iter.Seq[int64] {
-	return SequenceContext(context.Background(), options...)
+func Sequence(from int64, to int64, step int64) iter.Seq[int64] {
+	return SequenceContext(context.Background(), from, to, step)
 }
 
 // Sequence uses the new Go 1.23 style generator to generate a sequence
@@ -115,17 +115,9 @@ func Sequence(options ...Option) iter.Seq[int64] {
 // a Sequence repeating the same value over and over, set Step to 0 and
 // Start as the desired value. When the given context is cancelled, the
 // generator stops.
-func SequenceContext(ctx context.Context, options ...Option) iter.Seq[int64] {
-	settings := &sequence{
-		start: 0,
-		step:  1,
-		end:   100,
-	}
-	for _, option := range options {
-		option(settings)
-	}
+func SequenceContext(ctx context.Context, from int64, to int64, step int64) iter.Seq[int64] {
 	return func(yield func(int64) bool) {
-		value := settings.start
+		value := from
 		for {
 			select {
 			case <-ctx.Done():
@@ -135,8 +127,8 @@ func SequenceContext(ctx context.Context, options ...Option) iter.Seq[int64] {
 				if !yield(value) {
 					return
 				}
-				value += settings.step
-				if settings.end > 0 && value >= settings.end {
+				value += step
+				if to > 0 && value >= to {
 					return
 				}
 			}

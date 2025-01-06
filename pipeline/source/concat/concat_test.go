@@ -69,7 +69,7 @@ func TestConcatGeneratorContext(t *testing.T) {
 	defer cancel()
 	ctx2, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
-	for n := range Concat(integer.SequenceContext(ctx1, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx2, integer.From(1), integer.Step(0))) {
+	for n := range Concat(integer.SequenceContext(ctx1, 0, 0, 0), integer.SequenceContext(ctx2, 1, 0, 0)) {
 		slog.Info("received item", "value", n)
 		time.Sleep(10 * time.Millisecond)
 	}

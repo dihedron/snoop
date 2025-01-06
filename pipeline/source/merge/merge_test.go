@@ -43,7 +43,7 @@ func TestMergeContextGenerator(t *testing.T) {
 	func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
-		for n := range Merge(ctx, integer.SequenceContext(ctx, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx, integer.From(1), integer.Step(0)), integer.SequenceContext(ctx, integer.From(2), integer.Step(0))) {
+		for n := range Merge(ctx, integer.SequenceContext(ctx, 0, 0, 0), integer.SequenceContext(ctx, 1, 0, 0), integer.SequenceContext(ctx, 2, 0, 0)) {
 			slog.Info("received item", "value", n)
 			time.Sleep(10 * time.Millisecond)
 		}
