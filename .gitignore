@@ -20,6 +20,7 @@ dist/
 
 # Local testing directory
 _tests/
+pipeline/source/rabbitmq/.env
 
 # Go workspace file
 go.work

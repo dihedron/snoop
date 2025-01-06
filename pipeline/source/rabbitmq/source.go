@@ -95,7 +95,6 @@ func New(configuration *RabbitMQ) (*Source, error) {
 		RetryReconnectSec: DefaultReconnectSec,
 		AppID:             DefaultClientID,
 		ConsumerTag:       DefaultClientID,
-		Log:               nil,
 	}
 	if configuration.Client.ID != "" {
 		options.AppID = configuration.Client.ID

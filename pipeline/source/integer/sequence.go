@@ -98,8 +98,6 @@ func (s *Source) Emit(ctx context.Context) (<-chan pipeline.Message, error) {
 	return messages, nil
 }
 
-type sequence = Source
-
 // Sequence uses the new Go 1.23 style generator to generate a sequence
 // of integers; it may be configured with functional options. In order
 // to create an infinite sequence provide no end value; in order to create

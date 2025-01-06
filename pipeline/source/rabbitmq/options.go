@@ -3,11 +3,14 @@ package rabbitmq
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
+	"github.com/streamdal/rabbit"
 )
 
 // RabbitMQ contains all information about RabbitMQ connection and topology.
@@ -25,6 +28,76 @@ type RabbitMQ struct {
 func (r *RabbitMQ) Validate() error {
 	validate := validator.New()
 	return validate.Struct(r)
+}
+
+func (r *RabbitMQ) ToOptions() *rabbit.Options {
+	// gather the URLs of the servers
+	urls := []string{}
+	for _, server := range r.Servers {
+		proto := ""
+		if server.TLSInfo != nil && server.TLSInfo.EnableTLS {
+			proto = "amqps"
+		} else {
+			proto = "amqp"
+		}
+		url := ""
+		if server.Username != nil && server.Password != nil {
+			url = fmt.Sprintf("%s://%s:%s@%s:%d/", proto, *server.Username, *server.Password, server.Address, server.Port)
+		} else {
+			url = fmt.Sprintf("%s://%s:%d/", proto, server.Address, server.Port)
+		}
+		urls = append(urls, url)
+		slog.Debug("RabbitMQ server url", "value", url)
+	}
+
+	slog.Debug("connecting to RabbitMQ server URLs", "urls", urls)
+
+	binds := []rabbit.Binding{}
+	for _, binding := range r.Bindings {
+		slog.Info("adding exchange with routing keys", "exchange name", binding.Exchange.Name, "routing keys", binding.RoutingKeys)
+		binds = append(binds, rabbit.Binding{
+			ExchangeName:       binding.Exchange.Name,
+			ExchangeType:       binding.Exchange.Type.String(),
+			ExchangeDurable:    binding.Exchange.Durable,
+			ExchangeDeclare:    binding.Exchange.Declare,
+			ExchangeAutoDelete: binding.Exchange.AutoDelete,
+			BindingKeys:        binding.RoutingKeys,
+		})
+	}
+
+	slog.Info(
+		"binding to queue",
+		"queue name", r.Queue.Name,
+		"declare", r.Queue.Declare,
+		"durable", r.Queue.Durable,
+		"exclusive", r.Queue.Exclusive,
+		"autodelete", r.Queue.AutoDelete,
+	)
+
+	options := &rabbit.Options{
+		URLs:              urls,
+		Mode:              rabbit.Consumer,
+		QueueName:         r.Queue.Name,
+		QueueDeclare:      r.Queue.Declare,
+		QueueDurable:      r.Queue.Durable,
+		QueueExclusive:    r.Queue.Exclusive,
+		QueueAutoDelete:   r.Queue.AutoDelete,
+		Bindings:          binds,
+		QosPrefetchCount:  DefaultQosPrefetchCount,
+		QosPrefetchSize:   DefaultQosPrefetchSize,
+		RetryReconnectSec: DefaultReconnectSec,
+		AppID:             DefaultClientID,
+		ConsumerTag:       DefaultClientID,
+	}
+	if r.Client.ID != "" {
+		options.AppID = r.Client.ID
+	}
+	if r.Client.Tag != "" {
+		options.ConsumerTag = r.Client.Tag
+	}
+	slog.Info("configuring source to present as client ID", "client id", r.Client.ID, "tag", r.Client.Tag, "options", *options)
+
+	return options
 }
 
 // Client contains information about the client connecting to RabbitMQ.
@@ -200,10 +273,4 @@ type Binding struct {
 	Exchange *Exchange `json:"exchange,omitempty" yaml:"exchange,omitempty" mapstructure:"exchange,omitempty"`
 	// RoutingKeys is the set of routing keys to use on the given exchange.
 	RoutingKeys []string `json:"routingkeys,omitempty" yaml:"routingkeys,omitempty" mapstructure:"routingkeys,omitempty" validate:"required"`
-}
-
-// String is a utility function that converts a string value into
-// an optional string by returning it as a pointer (thus nillable).
-func String(value string) *string {
-	return &value
 }
