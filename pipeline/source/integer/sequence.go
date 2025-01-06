@@ -149,7 +149,7 @@ func SequenceContext(ctx context.Context, options ...Option) iter.Seq[int64] {
 		for {
 			select {
 			case <-ctx.Done():
-				slog.Info("cancelling...", "from", settings.start, "to", settings.end, "step", settings.step)
+				// slog.Info("cancelling...", "from", settings.start, "to", settings.end, "step", settings.step)
 				return
 			default:
 				if !yield(value) {

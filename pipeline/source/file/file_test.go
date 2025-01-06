@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"testing"
 	"time"
+
+	"github.com/dihedron/snoop/pipeline/source/concat"
 )
 
 const MaxIter = 15
@@ -33,31 +35,37 @@ loop:
 	slog.Info("done reading file, test complete")
 }
 
-func TestFileGenerator(t *testing.T) {
-	t.Log("test with no file")
-	for n, err := range File() {
-		slog.Info("received item", "value", n, "error", err)
-	}
-	t.Log("test with one file")
-	for n, err := range File("../../flow/test.txt") {
-		slog.Info("received item", "value", n, "error", err)
-	}
-	t.Log("test with two files")
-	for n, err := range File("../../flow/test.txt", "../../flow/test.txt") {
-		slog.Info("received item", "value", n, "error", err)
-	}
-	t.Log("test with non-existing file")
-	for n, err := range File("../../flow/non_existing.txt") {
-		slog.Info("received item", "value", n, "error", err)
-	}
-}
+// func TestFileContextGenerator2(t *testing.T) {
+// 	t.Log("test with cancellation after 10 items")
+// 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+// 	defer cancel()
+// 	for n, err := range FileContext(ctx, "../../flow/test.txt") {
+// 		slog.Info("received item", "value", n, "error", err)
+// 		time.Sleep(10 * time.Millisecond)
+// 	}
+// }
 
 func TestFileContextGenerator(t *testing.T) {
 	t.Log("test with cancellation after 10 items")
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	for n, err := range FileContext(ctx, "../../flow/test.txt") {
-		slog.Info("received item", "value", n, "error", err)
+	for n := range FileContext(ctx, "../../flow/test.txt") {
+		slog.Info("received item", "value", n)
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestFilesGenerator(t *testing.T) {
+	t.Log("test with one file")
+	for n := range File("../../flow/test.txt") {
+		slog.Info("received item", "value", n)
+	}
+	t.Log("test with two files")
+	for n := range concat.Concat(File("../../flow/test.txt"), File("../../flow/test.txt")) {
+		slog.Info("received item", "value", n)
+	}
+	t.Log("test with non-existing file")
+	for n := range File("../../flow/non_existing.txt") {
+		slog.Info("received item", "value", n)
 	}
 }

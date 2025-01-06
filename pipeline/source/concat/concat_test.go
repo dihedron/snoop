@@ -59,7 +59,7 @@ func TestConcatFiles(t *testing.T) {
 }
 
 func TestConcatGenerator(t *testing.T) {
-	for n := range Concat2(file.File("../../flow/a2m.txt"), file.File("../../flow/n2z.txt")) {
+	for n := range Concat(file.File("../../flow/a2m.txt"), file.File("../../flow/n2z.txt")) {
 		slog.Info("received item", "value", n)
 	}
 }

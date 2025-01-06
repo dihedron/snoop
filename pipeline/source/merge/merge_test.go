@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dihedron/snoop/pipeline/source/file"
 	"github.com/dihedron/snoop/pipeline/source/integer"
 )
 
@@ -38,22 +39,26 @@ loop:
 }
 
 func TestMergeContextGenerator(t *testing.T) {
-	t.Log("test with 3 alternating sequences of 0, 1 and 2 and cancellation after ~30 items")
-	ctx, cancel0 := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel0()
-	for n := range Merge(ctx, integer.SequenceContext(ctx, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx, integer.From(1), integer.Step(0)), integer.SequenceContext(ctx, integer.From(2), integer.Step(0))) {
-		t.Logf("received item %d", n)
-		time.Sleep(10 * time.Millisecond)
-	}
+	t.Log("test with 3 alternating sequences of 0, 1 and 2 and cancellation after ~20 items")
+	func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+		for n := range Merge(ctx, integer.SequenceContext(ctx, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx, integer.From(1), integer.Step(0)), integer.SequenceContext(ctx, integer.From(2), integer.Step(0))) {
+			slog.Info("received item", "value", n)
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+	t.Log("test with 2 files read line by line and cancellation after ~20 items")
+	func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+		for value := range Merge(ctx, file.FileContext(ctx, "../../flow/a2m.txt"), file.FileContext(ctx, "../../flow/n2z.txt")) {
+			slog.Info("received item", "value", value)
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
 }
 
 func TestMerge2ContextGenerator(t *testing.T) {
-	t.Log("test with 3 alternating sequences of 0, 1 and 2 and cancellation after ~30 items")
-	// ctx, cancel0 := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	// defer cancel0()
-	// for n := range Merge2(ctx, integer.SequenceContext(ctx, integer.From(0), integer.Step(0)), integer.SequenceContext(ctx, integer.From(1), integer.Step(0)), integer.SequenceContext(ctx, integer.From(2), integer.Step(0))) {
-	// 	t.Logf("received item %d", n)
-	// 	time.Sleep(10 * time.Millisecond)
-	// }
-	// TODO!!!
+	// TODO
 }
