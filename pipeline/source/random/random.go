@@ -64,19 +64,7 @@ func (s *Source) Emit(ctx context.Context) (<-chan pipeline.Message, error) {
 // Random uses the new Go 1.23 style generator to generate a sequence
 // of random integers.
 func Random(min int64, max int64) iter.Seq[int64] {
-	return func(yield func(int64) bool) {
-		for {
-			value, err := rand.Int(rand.Reader, big.NewInt(max-min))
-			if err != nil {
-				slog.Error("error retrieving random value", "error", err)
-				return
-			}
-			slog.Debug("sending sequence number as message", "value", value)
-			if !yield(value.Int64()) {
-				return
-			}
-		}
-	}
+	return RandomContext(context.Background(), min, max)
 }
 
 // Random uses the new Go 1.23 style generator to generate a sequence

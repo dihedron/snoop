@@ -106,27 +106,7 @@ type sequence = Source
 // a Sequence repeating the same value over and over, set Step to 0 and
 // Start as the desired value.
 func Sequence(options ...Option) iter.Seq[int64] {
-	settings := &sequence{
-		start: 0,
-		step:  1,
-		end:   100,
-	}
-	for _, option := range options {
-		option(settings)
-	}
-	return func(yield func(int64) bool) {
-		value := settings.start
-		for {
-			if !yield(value) {
-				return
-			}
-			value += settings.step
-			if settings.end > 0 && value >= settings.end {
-				//break
-				return
-			}
-		}
-	}
+	return SequenceContext(context.Background(), options...)
 }
 
 // Sequence uses the new Go 1.23 style generator to generate a sequence
