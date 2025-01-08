@@ -2,8 +2,6 @@ module github.com/dihedron/snoop
 
 go 1.23.4
 
-replace github.com/streamdal/rabbit => /data/workspaces/gomods/rabbit
-
 require (
 	github.com/dihedron/rawdata v1.0.1
 	github.com/go-playground/validator/v10 v10.23.0
@@ -29,3 +27,5 @@ require (
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
+
+replace github.com/streamdal/rabbit => github.com/dihedron/rabbit v0.1.15-0.20250108113512-27f0017f4655
