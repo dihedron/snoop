@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
@@ -95,6 +96,9 @@ func (r *RabbitMQ) ToOptions() *rabbit.Options {
 	if r.Client.Tag != "" {
 		options.ConsumerTag = r.Client.Tag
 	}
+	if r.Client.Timeout != 0 {
+		options.ConnectionTimeout = r.Client.Timeout
+	}
 	slog.Info("configuring source to present as client ID", "client id", r.Client.ID, "tag", r.Client.Tag, "options", *options)
 
 	return options
@@ -106,6 +110,8 @@ type Client struct {
 	ID string `json:"id" yaml:"id" mapstructure:"id" validate:"required"`
 	// Tag is the tag used by the client connecting to RabbitMQ.
 	Tag string `json:"tag" yaml:"tag" mapstructure:"tag" validate:"required"`
+	// Timeout is the timeout for connections to the server.
+	Timeout time.Duration `json:"timeout" yaml:"timeout" mapstructure:"timeout" validate:"optional"`
 }
 
 // Server contains all the information needed to connect to a RabbitMQ server.

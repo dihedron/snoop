@@ -28,4 +28,5 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 )
 
-replace github.com/streamdal/rabbit => github.com/dihedron/rabbit v0.1.15-0.20250108113512-27f0017f4655
+//replace github.com/streamdal/rabbit => github.com/dihedron/rabbit v0.1.15-0.20250108113512-27f0017f4655
+replace github.com/streamdal/rabbit => ../rabbit

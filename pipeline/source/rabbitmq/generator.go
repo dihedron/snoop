@@ -49,7 +49,7 @@ func RabbitMQContext(ctx context.Context, configuration *RabbitMQ) iter.Seq[amqp
 
 		slog.Info(
 			"binding to queue",
-			"queue name", configuration.Queue.Name,
+			"name", configuration.Queue.Name,
 			"declare", configuration.Queue.Declare,
 			"durable", configuration.Queue.Durable,
 			"exclusive", configuration.Queue.Exclusive,
@@ -70,6 +70,7 @@ func RabbitMQContext(ctx context.Context, configuration *RabbitMQ) iter.Seq[amqp
 			RetryReconnectSec: DefaultReconnectSec,
 			AppID:             DefaultClientID,
 			ConsumerTag:       DefaultClientID,
+			ConnectionTimeout: configuration.Client.Timeout,
 		}
 		if configuration.Client.ID != "" {
 			options.AppID = configuration.Client.ID
