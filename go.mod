@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/dihedron/rawdata v1.0.1
-	github.com/go-playground/validator/v10 v10.23.0
+	github.com/go-playground/validator/v10 v10.24.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/juju/rfc/v2 v2.0.0
