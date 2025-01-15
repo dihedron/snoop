@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"iter"
 	"log/slog"
 	"testing"
 	"time"
@@ -28,22 +29,18 @@ func (f *TestLogFilter) Name() string {
 	return "github.com/dihedron/snoop/pipeline/flow/TestLogFilter"
 }
 
-func (f *TestLogFilter) Process(ctx context.Context, message pipeline.Message) (context.Context, pipeline.Message, error) {
+func (f *TestLogFilter) Process(message any) (any, error) {
 	f.t.Logf("message flowing through: %v\n", message)
-	return ctx, message, nil
+	return message, nil
 }
 
-func TestFibonacciEngineStartStop(t *testing.T) {
-	source, err := fibonacci.New()
-	if err != nil {
-		slog.Error("error creating fibonacci source", "error", err)
-	}
+func TestFibonacciFlow(t *testing.T) {
 	var buffer bytes.Buffer
-	counter := counter.New()
 	profiler := profiler.New()
+	counter := counter.New()
 	pipeline := New(
-		From(source),
-		Through(
+		From(fibonacci.Series(1_000_000)),
+		Through[int64](
 			profiler,
 			&TestLogFilter{t: t},
 			throttler.New(50*time.Millisecond),
@@ -51,75 +48,79 @@ func TestFibonacciEngineStartStop(t *testing.T) {
 			profiler,
 			counter,
 		),
-		Into(&sink.Null{}),
+		Into[int64](&sink.Null{}),
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	pipeline.Execute(ctx)
 	defer pipeline.Close()
+	pipeline.Execute()
 	slog.Debug("final result", "items", counter.Count(), "each", profiler.Elapsed(), "value", buffer.String())
 }
 
-func TestRandomEngineStartStop(t *testing.T) {
-	source, err := random.New(0, 1_000, 10)
-	if err != nil {
-		slog.Error("error creating random source", "error", err)
-	}
+func TestRandomFlow(t *testing.T) {
 	var buffer bytes.Buffer
 	counter := counter.New()
 	pipeline := New(
-		From(source),
-		Through(
+		From(random.Sequence(0, 1_000)),
+		Through[int64](
 			&TestLogFilter{t: t},
 			throttler.New(50*time.Millisecond),
 			recorder.New(&buffer, true),
 			counter,
 		),
-		Into(&sink.Null{}),
+		Into[int64](&sink.Null{}),
 	)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	pipeline.Execute(ctx)
 	defer pipeline.Close()
+	pipeline.Execute()
 	slog.Debug("final result", "count", counter.Count(), "value", buffer.String())
 }
 
-func TestFileEngineStartStop(t *testing.T) {
-	source, err := file.New("./test.txt")
-	if err != nil {
-		slog.Error("error creating file source", "error", err)
+type Acknowledgeable[T any] struct {
+	value T
+}
+
+func (a Acknowledgeable[T]) Ack(multiple bool) error {
+	return nil
+}
+
+func Wrap[T any](seq iter.Seq[T]) iter.Seq[Acknowledgeable[T]] {
+	return func(yield func(Acknowledgeable[T]) bool) {
+		for v := range seq {
+			if !yield(Acknowledgeable[T]{value: v}) {
+				return
+			}
+		}
 	}
+}
+
+func TestFileFlow(t *testing.T) {
+	// source, err := file.New("./test.txt")
+	// if err != nil {
+	// 	slog.Error("error creating file source", "error", err)
+	// }
 	var buffer bytes.Buffer
 	counter := counter.New()
 	pipeline := New(
-		From(source),
-		Through(
+		From(file.FileContext(context.Background(), "./test.txt")),
+		Through[string](
 			&TestLogFilter{t: t},
 			throttler.New(50*time.Millisecond),
 			recorder.New(&buffer, true),
 			counter,
 		),
-		Into(&sink.Null{}),
+		Into[string](&sink.Null{}),
 	)
-	ctx := context.Background()
-	pipeline.Execute(ctx)
 	defer pipeline.Close()
+	pipeline.Execute()
 	slog.Debug("results received", "count", counter.Count(), "value", buffer.String())
 }
 
-func TestEngineStartStopWithSkippedMessages(t *testing.T) {
-	source := integer.New(
-		integer.From(0),
-		integer.Step(1),
-		integer.Until(100))
+func TestIntegerSequenceWithSkippedMessages(t *testing.T) {
 	accumulator := &Int64Accumulator{}
 	pipeline := New(
-		From(source),
-		Through(
+		From(integer.Sequence(0, 100, 1)),
+		Through[int64](
 			accumulator,
 		),
-		Into(&sink.Null{}),
+		Into[int64](&sink.Null{}),
 	)
 	ctx := context.Background()
 	pipeline.Execute(ctx)

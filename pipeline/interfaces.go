@@ -1,43 +1,21 @@
 package pipeline
 
 import (
-	"context"
 	"errors"
 )
-
-// Source describes the behaviour of input sources; the concrete
-// implementations are expected to be able to output messages one at
-// a time into the output channel, in order for them to be piped into
-// the actual pipeline and its Processors. When the input Context is
-// cancelled, the Source should poison the pipeline and then return
-// immediately.
-type Source interface {
-	// Emit starts the input source which will emit messages one at a time
-	// on the returned channel; if an error occurs when opening the underlying
-	// source, an error could be returned. The input Context can be used to stop
-	// the Source: concrete implementations will have to check on the Done() channel
-	// before lengthy operations in order to exit as soon as it is signalled; once
-	// the source is done producing messages, it will close the output message so
-	// the pipline Engine can detect that there are no more messages available.
-	// Note that Open starts a new goroutine to asynchronously produce and output
-	// messages onto the output channel.
-	Emit(ctx context.Context) (<-chan Message, error)
-}
 
 // Filter implements a pipeline filter; it processes one message
 // at a time and then passes the bucket to the next filter in the
 // chain.
 type Filter interface {
 	Name() string
-	// Process processes a message; it should check if the context
-	// has been cancelled and return immediately if so; it can tell
-	// the pipeline to drop the current message without further processing
-	// by the next filters in the chain by returning a ErrSkip, or to abort
-	// the whole pipeline by returning ErrAbort. The output Context should
-	// be the same that was given as input or a derived Context; this
-	// allows to add objects to the context and have them passed over to
-	// the following filters.
-	Process(ctx context.Context, message Message) (context.Context, Message, error)
+	// Process processes a message; it can modify the message provided
+	// the resulting value still complies with the Message interface;
+	// moreover it can instruct the pipeline to drop the current message
+	// without further processing by the next filters in the chain by
+	// returning a ErrSkip, or to abort the whole pipeline by returning
+	// ErrAbort.
+	Process(message any) (any, error)
 }
 
 // Sink implements a pipeline sink; it absorbs all messages as they
@@ -45,24 +23,24 @@ type Filter interface {
 // the Sink is closed when the pipeline is.
 type Sink interface {
 	// Collect acquires a message from the pipeline and acknowledges it.
-	Collect(ctx context.Context, message Message) error
+	Collect(message any) error
 }
 
-// Message is the interface that delivered messages must comply with.
-type Message interface {
+// Acknowledgeable is the interface that delivered messages must comply with
+// if they must be acknowledged.
+type Acknowledgeable interface {
 	// Ack is used to notify the source that the Message has been processed;
 	// this is relevant in those cases where Messages have to be explicitly
 	// removed from the source, depending on whether they have been acquired
-	// by the client (see RabbitMQ deliveries). When this is not the case,
-	// the function can be a no-op.
+	// by the client (see RabbitMQ deliveries).
 	Ack(multiple bool) error
 }
 
-// MessageWrpper is a generic mechanism to convey the original message
+// MessageWrapper is a generic mechanism to convey the original message
 // alongside the modified, or wrapping message; this allows to keep track
 // of the acknowledging logic, so that if the original message must
 type MessageWrapper struct {
-	wrapped Message
+	wrapped Acknowledgeable
 }
 
 func (w *MessageWrapper) Ack(multiple bool) error {

@@ -24,7 +24,12 @@ func TestRabbitMQContext(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
+	count := 0
 	for m := range RabbitMQContext(ctx, rmq) {
+		count++
+		if count == 10 {
+			break
+		}
 		t.Logf("message received: %s", format.ToPrettyJSON(m))
 	}
 }

@@ -11,7 +11,7 @@ import (
 // Acknowledge is a sink that acknowledges message.
 type Acknowledge struct{}
 
-func (*Acknowledge) Collect(ctx context.Context, message pipeline.Message) error {
+func (*Acknowledge) Collect(_ context.Context, message pipeline.Message) error {
 	if message != nil {
 		slog.Debug("absorbing message with acknowledgement", "message", message, "type", fmt.Sprintf("%T", message))
 		if err := message.Ack(false); err != nil {

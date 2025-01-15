@@ -10,6 +10,7 @@ import (
 	"github.com/dihedron/snoop/pipeline/source/integer"
 )
 
+/*
 func TestMerge(t *testing.T) {
 	stopNumber := int64(1_000)
 	source1 := integer.New(
@@ -37,6 +38,7 @@ loop:
 	}
 	slog.Debug("no more messages, test complete")
 }
+*/
 
 func TestMergeContextGenerator(t *testing.T) {
 	t.Log("test with 3 alternating sequences of 0, 1 and 2 and cancellation after ~20 items")

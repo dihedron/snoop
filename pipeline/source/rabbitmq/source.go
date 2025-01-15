@@ -1,33 +1,6 @@
 package rabbitmq
 
-import (
-	"context"
-	"fmt"
-	"log/slog"
-	"time"
-
-	"github.com/dihedron/snoop/pipeline"
-	amqp091 "github.com/rabbitmq/amqp091-go"
-	"github.com/streamdal/rabbit"
-)
-
-const (
-	// DefaultClientID is the constant used to identify the client at the
-	// server, both as a producer and a consumer.
-	DefaultClientID = "snoop-v1.0.0"
-	// DefaultReconnectSec is the delay in seconds between successive
-	// attempts to reconnect to the server after a failure.
-	DefaultReconnectSec = 5
-	// DefaultResendDelay is the delay between attempts to resend messages
-	// the server didn't confirm.
-	DefaultResendDelay = 5 * time.Second
-	// DefaultQosPrefetchCount is the default value of messages that the
-	// server should prefetch.
-	DefaultQosPrefetchCount = 0
-	// DefaultQosPrefetchSize is the default number of bytes that should be
-	// prefetched without being acknowledged.
-	DefaultQosPrefetchSize = 0
-)
+/*
 
 // Source is the concrete suorce that reads deliveries
 // from a RabbitMQ topology.
@@ -155,3 +128,4 @@ func (s *Source) Close() error {
 	s.cancel()
 	return nil
 }
+*/
