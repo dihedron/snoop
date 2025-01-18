@@ -11,7 +11,7 @@ import (
 )
 
 func TestConcatGenerator(t *testing.T) {
-	for n := range Concat(file.File("../../flow/a2m.txt"), file.File("../../flow/n2z.txt")) {
+	for n := range Concat(file.File("../file/a2m.txt"), file.File("../file/n2z.txt")) {
 		slog.Info("received item", "value", n)
 	}
 }

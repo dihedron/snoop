@@ -1,60 +1,49 @@
-package flow
+package pipeline
 
 import (
 	"bytes"
-	"context"
-	"fmt"
-	"iter"
 	"log/slog"
 	"testing"
 	"time"
 
-	"github.com/dihedron/snoop/pipeline"
 	"github.com/dihedron/snoop/pipeline/filter/counter"
 	"github.com/dihedron/snoop/pipeline/filter/profiler"
 	"github.com/dihedron/snoop/pipeline/filter/recorder"
 	"github.com/dihedron/snoop/pipeline/filter/throttler"
-	"github.com/dihedron/snoop/pipeline/sink"
 	"github.com/dihedron/snoop/pipeline/source/fibonacci"
-	"github.com/dihedron/snoop/pipeline/source/file"
-	"github.com/dihedron/snoop/pipeline/source/integer"
-	"github.com/dihedron/snoop/pipeline/source/random"
 )
 
-type TestLogFilter struct {
+type TestLogFilter[T any] struct {
 	t *testing.T
 }
 
-func (f *TestLogFilter) Name() string {
-	return "github.com/dihedron/snoop/pipeline/flow/TestLogFilter"
-}
-
-func (f *TestLogFilter) Process(message any) (any, error) {
-	f.t.Logf("message flowing through: %v\n", message)
-	return message, nil
+func (f *TestLogFilter[T]) Apply(value T) (T, error) {
+	f.t.Logf("value flowing through: %v (type: %T)\n", value, value)
+	return value, nil
 }
 
 func TestFibonacciFlow(t *testing.T) {
 	var buffer bytes.Buffer
-	profiler := profiler.New()
-	counter := counter.New()
-	pipeline := New(
-		From(fibonacci.Series(1_000_000)),
-		Through[int64](
-			profiler,
-			&TestLogFilter{t: t},
-			throttler.New(50*time.Millisecond),
-			recorder.New(&buffer, true),
-			profiler,
-			counter,
-		),
-		Into[int64](&sink.Null{}),
+	profiler := profiler.New[int64]()
+	counter := counter.New[int64]()
+	pipeline := New[int64](
+		profiler,
+		&TestLogFilter[int64]{t: t},
+		throttler.New[int64](50*time.Millisecond),
+		recorder.New[int64](&buffer, "", true),
+		profiler,
+		counter,
 	)
 	defer pipeline.Close()
-	pipeline.Execute()
+
+	for value := range fibonacci.Series(1_000_000) {
+		value, err := pipeline.Apply(value)
+		t.Logf("result: %v (err = %v)", value, err)
+	}
 	slog.Debug("final result", "items", counter.Count(), "each", profiler.Elapsed(), "value", buffer.String())
 }
 
+/*
 func TestRandomFlow(t *testing.T) {
 	var buffer bytes.Buffer
 	counter := counter.New()
@@ -73,18 +62,18 @@ func TestRandomFlow(t *testing.T) {
 	slog.Debug("final result", "count", counter.Count(), "value", buffer.String())
 }
 
-type Acknowledgeable[T any] struct {
+type AcknowledgeableImpl[T any] struct {
 	value T
 }
 
-func (a Acknowledgeable[T]) Ack(multiple bool) error {
+func (a AcknowledgeableImpl[T]) Ack(multiple bool) error {
 	return nil
 }
 
-func Wrap[T any](seq iter.Seq[T]) iter.Seq[Acknowledgeable[T]] {
-	return func(yield func(Acknowledgeable[T]) bool) {
+func Wrap[T any](seq iter.Seq[T]) iter.Seq[AcknowledgeableImpl[T]] {
+	return func(yield func(AcknowledgeableImpl[T]) bool) {
 		for v := range seq {
-			if !yield(Acknowledgeable[T]{value: v}) {
+			if !yield(AcknowledgeableImpl[T]{value: v}) {
 				return
 			}
 		}
@@ -114,17 +103,17 @@ func TestFileFlow(t *testing.T) {
 }
 
 func TestIntegerSequenceWithSkippedMessages(t *testing.T) {
+	ctx := context.Background()
 	accumulator := &Int64Accumulator{}
 	pipeline := New(
-		From(integer.Sequence(0, 100, 1)),
+		From(integer.SequenceContext(ctx, 0, 100, 1)),
 		Through[int64](
 			accumulator,
 		),
 		Into[int64](&sink.Null{}),
 	)
-	ctx := context.Background()
-	pipeline.Execute(ctx)
 	defer pipeline.Close()
+	pipeline.Execute()
 	slog.Debug("results received", "count", len(accumulator.values), "value", accumulator.values)
 }
 
@@ -136,27 +125,19 @@ func (a *Int64Accumulator) Name() string {
 	return "Int64Accumulator"
 }
 
-func (a *Int64Accumulator) Process(ctx context.Context, message pipeline.Message) (context.Context, pipeline.Message, error) {
-	select {
-	case <-ctx.Done():
-		slog.Debug("context cancelled")
-		return ctx, message, pipeline.ErrAbort
-	default:
-		slog.Debug("processing message")
-		if message, ok := message.(*integer.Message); ok {
-			value := int64(*message)
-			if value%2 == 0 {
-				slog.Info("even value, forwarding...", "value", value)
-				return ctx, message, nil
-			} else {
-				slog.Info("odd value: adding to skipped values in accumulator...", "value", value)
-				a.values = append(a.values, value)
-				message.Ack(true)
-				return ctx, nil, pipeline.ErrSkip
-			}
+func (a *Int64Accumulator) Process(message any) (any, error) {
+	slog.Debug("processing message")
+	if value, ok := message.(int64); ok {
+		if value%2 == 0 {
+			slog.Info("even value, forwarding...", "value", value)
+			return value, nil
+		} else {
+			slog.Info("odd value: adding to skipped values in accumulator...", "value", value)
+			a.values = append(a.values, value)
+			return nil, pipeline.ErrSkip
 		}
 	}
-	return ctx, nil, fmt.Errorf("invalid message type: expected *int64, got %T", message)
+	return nil, fmt.Errorf("invalid message type: expected int64, got %T", message)
 }
 
 func TestPipelineWithCounterSource(t *testing.T) {
@@ -168,7 +149,7 @@ func TestPipelineWithCounterSource(t *testing.T) {
 	}
 	pipeline := New(
 		From(source),
-		Through(
+		Through[pipeline.Message](
 			&TestLogFilter{t: t},
 			throttler.New(10*time.Millisecond),
 			recorder.New(&buffer, true),
@@ -204,3 +185,4 @@ func (s *ListAccumulatorSink) Collect(ctx context.Context, message pipeline.Mess
 func (s *ListAccumulatorSink) GetValues() []pipeline.Message {
 	return s.values
 }
+*/

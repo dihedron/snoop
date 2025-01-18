@@ -1,30 +1,27 @@
 package syslogger
 
 import (
-	"context"
 	"log/slog"
 
 	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/message"
-	"github.com/dihedron/snoop/pipeline"
 	"github.com/juju/rfc/v2/rfc5424"
 )
 
-// SysLogWriter is a filter that logs messages to the
-// local system syslogd.
-type SysLogWriter struct {
+// Writer is a filter that logs messages to the local system syslogd.
+type Writer[T any] struct {
 	name       string
 	enterprise string
 	process    string
-	acceptor   MessageAcceptor
+	acceptor   MessageAcceptor[T]
 	logger     *SysLogger
 }
 
-type SysLogWriterOption func(*SysLogWriter)
+type Option[T any] func(*Writer[T])
 
-func NewSysLogWriter(options ...SysLogWriterOption) (*SysLogWriter, error) {
+func NewWriter[T any](options ...Option[T]) (*Writer[T], error) {
 	var err error
-	writer := &SysLogWriter{}
+	writer := &Writer[T]{}
 	for _, option := range options {
 		option(writer)
 	}
@@ -36,42 +33,38 @@ func NewSysLogWriter(options ...SysLogWriterOption) (*SysLogWriter, error) {
 	return writer, nil
 }
 
-func WithApplicationName(value string) SysLogWriterOption {
-	return func(s *SysLogWriter) {
+func WithApplicationName[T any](value string) Option[T] {
+	return func(s *Writer[T]) {
 		s.name = value
 	}
 }
 
-func WithEnterpriseId(value string) SysLogWriterOption {
-	return func(s *SysLogWriter) {
+func WithEnterpriseId[T any](value string) Option[T] {
+	return func(s *Writer[T]) {
 		s.enterprise = value
 	}
 }
 
-func WithProcessId(value string) SysLogWriterOption {
-	return func(s *SysLogWriter) {
+func WithProcessId[T any](value string) Option[T] {
+	return func(s *Writer[T]) {
 		s.process = value
 	}
 }
 
 // MessageAcceptor is used to mark messages that should be logged
 // to syslog.
-type MessageAcceptor func(message pipeline.Message) bool
+type MessageAcceptor[T any] func(message T) bool
 
-func WithAcceptor(acceptor MessageAcceptor) SysLogWriterOption {
-	return func(s *SysLogWriter) {
+func WithAcceptor[T any](acceptor MessageAcceptor[T]) Option[T] {
+	return func(s *Writer[T]) {
 		s.acceptor = acceptor
 	}
 }
 
-func (w *SysLogWriter) Name() string {
-	return "github.com/dihedron/snoop/syslogger/SysLogWriter"
-}
-
-func (w *SysLogWriter) Process(ctx context.Context, msg pipeline.Message) (context.Context, pipeline.Message, error) {
-	if w.acceptor == nil || w.acceptor(msg) {
-		slog.Debug("logging message for inclusion into syslog...", "type", format.TypeAsString(msg))
-		if m, ok := msg.(*message.IdentityNotification); ok {
+func (w *Writer[T]) Apply(value T) (T, error) {
+	if w.acceptor == nil || w.acceptor(value) {
+		slog.Debug("logging message for inclusion into syslog...", "type", format.TypeAsString(value))
+		if m, ok := value.(*message.IdentityNotification); ok {
 			slog.Info("sending message to syslog", "type", m.EventType)
 			// we cannot stop the pipeline even if there's an error
 			// writing to syslog, but we should at least log it
@@ -98,5 +91,5 @@ func (w *SysLogWriter) Process(ctx context.Context, msg pipeline.Message) (conte
 			}
 		}
 	}
-	return ctx, msg, nil
+	return value, nil
 }

@@ -1,35 +1,22 @@
 package throttler
 
 import (
-	"context"
 	"log/slog"
 	"time"
-
-	"github.com/dihedron/snoop/pipeline"
 )
 
-// Throttler is a filter that delays message processing
-// by inserting a delay between messages.
-type Throttler struct {
+// Delay is a filter that delays the value processing
+// by inserting a configurable delay.
+type Delay[T any] struct {
 	delay time.Duration
 }
 
-func New(delay time.Duration) *Throttler {
-	return &Throttler{delay: delay}
+func New[T any](delay time.Duration) *Delay[T] {
+	return &Delay[T]{delay: delay}
 }
 
-func (d *Throttler) Name() string {
-	return "github.com/dihedron/snoop/pipeline/filter/throttler/Throttler"
-}
-
-func (d *Throttler) Process(ctx context.Context, message pipeline.Message) (context.Context, pipeline.Message, error) {
-	select {
-	case <-ctx.Done():
-		slog.Debug("context cancelled")
-		return ctx, message, pipeline.ErrAbort
-	default:
-		slog.Debug("throttling before forwarding message")
-		time.Sleep(d.delay)
-	}
-	return ctx, message, nil
+func (d *Delay[T]) Apply(value T) (T, error) {
+	slog.Debug("throttling", "delay", d.delay.String(), "value", value)
+	time.Sleep(d.delay)
+	return value, nil
 }
