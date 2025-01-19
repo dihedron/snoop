@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dihedron/snoop/pipeline/source/file"
-	"github.com/dihedron/snoop/pipeline/source/integer"
+	"github.com/dihedron/snoop/generator/file"
+	"github.com/dihedron/snoop/generator/integer"
 )
 
 func TestMergeContextGenerator(t *testing.T) {
@@ -24,7 +24,7 @@ func TestMergeContextGenerator(t *testing.T) {
 	func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
-		for value := range Merge(ctx, file.FileContext(ctx, "../../flow/a2m.txt"), file.FileContext(ctx, "../../flow/n2z.txt")) {
+		for value := range Merge(ctx, file.LinesContext(ctx, "../file/a2m.txt"), file.LinesContext(ctx, "../file/n2z.txt")) {
 			slog.Info("received item", "value", value)
 			time.Sleep(10 * time.Millisecond)
 		}

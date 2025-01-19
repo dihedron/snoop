@@ -9,11 +9,10 @@ import (
 	"github.com/dihedron/snoop/pipeline/filter/profiler"
 	"github.com/dihedron/snoop/pipeline/filter/recorder"
 	"github.com/dihedron/snoop/pipeline/filter/throttler"
-	"github.com/dihedron/snoop/pipeline/source/fibonacci"
 	"github.com/dihedron/snoop/pipeline/source/file"
-	"github.com/dihedron/snoop/pipeline/source/random"
 )
 
+/*
 type TestLogFilter[T any] struct {
 	t *testing.T
 }

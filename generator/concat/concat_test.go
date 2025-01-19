@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dihedron/snoop/pipeline/source/file"
-	"github.com/dihedron/snoop/pipeline/source/integer"
+	"github.com/dihedron/snoop/generator/file"
+	"github.com/dihedron/snoop/generator/integer"
 )
 
 func TestConcatGenerator(t *testing.T) {
