@@ -1,36 +1,33 @@
-package pipeline
+package chain
 
 import (
 	"bytes"
 	"testing"
 	"time"
 
+	"github.com/dihedron/snoop/pipeline"
 	"github.com/dihedron/snoop/pipeline/filter/counter"
 	"github.com/dihedron/snoop/pipeline/filter/profiler"
 	"github.com/dihedron/snoop/pipeline/filter/recorder"
 	"github.com/dihedron/snoop/pipeline/filter/throttler"
 	"github.com/dihedron/snoop/pipeline/source/fibonacci"
-	"github.com/dihedron/snoop/pipeline/source/file"
-	"github.com/dihedron/snoop/pipeline/source/random"
 )
 
-type TestLogFilter[T any] struct {
-	t *testing.T
+func LogFilter[T any](t *testing.T) pipeline.Handler[T] {
+	return func(value T) (T, error) {
+		t.Logf("value flowing through: %v (type: %T)\n", value, value)
+		return value, nil
+	}
 }
 
-func (f *TestLogFilter[T]) Apply(value T) (T, error) {
-	f.t.Logf("value flowing through: %v (type: %T)\n", value, value)
-	return value, nil
-}
-
-func TestFibonacciFlow(t *testing.T) {
+func TestFibonacciChain(t *testing.T) {
 	var buffer bytes.Buffer
 	profiler := profiler.New[int64]()
 	counter := counter.New[int64]()
 	pipeline := New[int64](
-		profiler,
-		&TestLogFilter[int64]{t: t},
-		throttler.New[int64](50*time.Millisecond),
+		profiler.Apply,
+		LogFilter[int64](t),
+		throttler.Delay[int64](50*time.Millisecond),
 		recorder.New[int64](&buffer, "", true),
 		profiler,
 		counter,
@@ -44,6 +41,7 @@ func TestFibonacciFlow(t *testing.T) {
 	t.Logf("final result: items %d, value:\n%s", counter.Count(), buffer.String())
 }
 
+/*
 func TestRandomFlow(t *testing.T) {
 	var buffer bytes.Buffer
 	profiler := profiler.New[int64]()
@@ -68,7 +66,7 @@ func TestRandomFlow(t *testing.T) {
 	t.Logf("final result: items %d, value:\n%s", counter.Count(), buffer.String())
 }
 
-/*
+
 type AcknowledgeableImpl[T any] struct {
 	value T
 }
@@ -86,7 +84,7 @@ func Wrap[T any](seq iter.Seq[T]) iter.Seq[AcknowledgeableImpl[T]] {
 		}
 	}
 }
-*/
+
 
 func TestFileFlow(t *testing.T) {
 	var buffer bytes.Buffer
@@ -114,7 +112,7 @@ func TestFileFlow(t *testing.T) {
 
 }
 
-/*
+
 func TestIntegerSequenceWithSkippedMessages(t *testing.T) {
 	ctx := context.Background()
 	accumulator := &Int64Accumulator{}

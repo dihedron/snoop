@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+
+	"github.com/dihedron/snoop/pipeline"
 )
 
 // Recorder is a filter that records all messages to a writer
@@ -37,4 +39,18 @@ func (r *Recorder[T]) Apply(value T) (T, error) {
 		slog.Warn("ignored error writing value", "error", err)
 	}
 	return value, nil
+}
+
+func RecorderFunc[T any](writer io.Writer, format string, lenient bool) pipeline.Handler[T] {
+	return func(value T) (T, error) {
+		_, err := writer.Write([]byte(fmt.Sprintf(format, value)))
+		if err != nil {
+			if !lenient {
+				slog.Error("error writing value", "error", err)
+				return value, err
+			}
+			slog.Warn("ignored error writing value", "error", err)
+		}
+		return value, nil
+	}
 }

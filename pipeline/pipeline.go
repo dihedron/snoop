@@ -8,6 +8,8 @@ import (
 	"github.com/dihedron/snoop/format"
 )
 
+type Handler[T any] func(value T) (T, error)
+
 // Filter implements a pipeline filter; it processes one value
 // at a time and then passes the bucket to the next filter in the
 // chain.
