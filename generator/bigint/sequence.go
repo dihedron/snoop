@@ -28,7 +28,7 @@ func SequenceContext(ctx context.Context, from *big.Int, to *big.Int, step *big.
 		for {
 			select {
 			case <-ctx.Done():
-				// slog.Info("cancelling...", "from", settings.start, "to", settings.end, "step", settings.step)
+				// slog.Info("cancelling...", "from", from, "to", to, "step", step)
 				return
 			default:
 				if !yield(*value) {

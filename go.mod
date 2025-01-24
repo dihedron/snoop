@@ -20,6 +20,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/juju/errors v1.0.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/neilotoole/slogt v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect

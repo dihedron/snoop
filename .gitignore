@@ -20,7 +20,7 @@ dist/
 
 # Local testing directory
 _tests/
-pipeline/source/rabbitmq/.env
+generator/rabbitmq/.env
 
 # Go workspace file
 go.work
@@ -28,3 +28,4 @@ go.work.sum
 
 # env file
 .env
+.piped

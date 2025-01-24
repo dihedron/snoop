@@ -8,15 +8,18 @@ import (
 
 	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/generator/integer"
+	"github.com/dihedron/snoop/test"
 )
 
 func TestConcatGenerator(t *testing.T) {
-	for n := range Concat(file.File("../file/a2m.txt"), file.File("../file/n2z.txt")) {
+	test.Setup(t, test.Text)
+	for n := range Concat(file.Lines("../file/a2m.txt"), file.Lines("../file/n2z.txt")) {
 		slog.Info("received item", "value", n)
 	}
 }
 
 func TestConcatGeneratorContext(t *testing.T) {
+	test.Setup(t, test.Text)
 	ctx1, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	ctx2, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
