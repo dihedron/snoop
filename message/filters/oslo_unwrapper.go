@@ -39,3 +39,20 @@ func (f *OsloMessageUnwrapper) Process(ctx context.Context, msg pipeline.Message
 	slog.Error("not a valid AMQP message", "error", ErrUnsupportedMessageType)
 	return ctx, nil, ErrUnsupportedMessageType
 }
+
+// UnwrapOslo unwraps a message received from RabbitMQ into an Oslo
+// notification.
+func UnwrapOslo(value T) (T, error) {
+	var nihil pipeline.Acknowledgeable
+	if m, ok := pipeline.Acknowledgeable(value).(*message.AMQPMessage); ok {
+		oslo, err := message.NewOsloFromAMQPMessage(m, true)
+		if err != nil {
+			slog.Error("error reading Oslo message", "error", err)
+			r, _ := any(nihil).(pipeline.Acknowledgeable)
+			return r.(T), ErrUnsupportedMessageType
+		}
+		return oslo.(T), nil
+	}
+	slog.Error("not a valid AMQP message", "error", ErrUnsupportedMessageType)
+	return nil, ErrUnsupportedMessageType
+}

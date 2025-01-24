@@ -11,6 +11,15 @@ import (
 // Handler is the type of a value processor.
 type Handler[T any] func(value T) (T, error)
 
+// type Error struct {
+// 	message string
+// 	wrapped error
+// }
+
+// func (e *Error) Error() string {
+// 	return fmt.Sprintf(e.message, e.wrapped)
+// }
+
 var (
 	//lint:ignore ST1012 skip is not a real error, more a wrapper of one.
 	skip = errors.New("handler requests to skip value and continue")
