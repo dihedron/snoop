@@ -3,7 +3,7 @@ package experiment
 import "fmt"
 
 // Define a generic type for the function in the chain
-type Handler[S, T any] func(S) (T, error)
+type Handler[S any, T any] func(S) (T, error)
 
 // Chain creates a chain of functions
 func Chain[S any, T any, U any](first Handler[S, T], second Handler[T, U]) Handler[S, U] {
@@ -34,7 +34,13 @@ func ChainTogether() {
 	}
 
 	// Chain the functions together
-	chainedFunc := Chain(StringToInt, Chain(IntToDouble, DoubleToString))
+	chainedFunc := Chain(
+		StringToInt,
+		Chain(
+			IntToDouble,
+			DoubleToString,
+		),
+	)
 
 	// Use the chained function
 	result, _ := chainedFunc("10")
