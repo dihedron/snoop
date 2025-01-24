@@ -1,9 +1,11 @@
-package syslogger
+package syslog
 
 import (
 	"log"
+	"log/slog"
 	"testing"
 
+	"github.com/dihedron/snoop/test"
 	"github.com/juju/rfc/v2/rfc5424"
 )
 
@@ -20,9 +22,10 @@ type TestData struct {
 
 func TestSendPlainTextToSyslog(t *testing.T) {
 
+	test.Setup(t)
 	message := "a message sent to syslog"
 
-	syslog, err := New(ApplicationName, "", "")
+	syslog, err := New(WithApplication(ApplicationName))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,10 +45,11 @@ func TestSendPlainTextToSyslog(t *testing.T) {
 }
 
 func TestSendObjectAsJSONToSyslog(t *testing.T) {
-
-	syslog, err := New(ApplicationName, "", "")
+	test.Setup(t)
+	syslog, err := New(WithApplication(ApplicationName))
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("error opeinnig client", "error", err)
+		t.FailNow()
 	}
 
 	if err := syslog.Send(&Message{

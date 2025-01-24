@@ -1,4 +1,4 @@
-package syslogger
+package syslog2
 
 import (
 	"log/slog"

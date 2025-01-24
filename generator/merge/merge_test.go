@@ -12,7 +12,7 @@ import (
 )
 
 func TestMergeContextGenerator(t *testing.T) {
-	test.Setup(t, test.Text)
+	test.Setup(t)
 	slog.Info("test with 3 alternating sequences of 0, 1 and 2 and cancellation after ~20 items")
 	func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)

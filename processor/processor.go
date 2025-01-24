@@ -12,9 +12,9 @@ import (
 type Handler[T any] func(value T) (T, error)
 
 var (
-	//lint:ignore ST1012 Skip is not a real error, more a wrapper of one.
+	//lint:ignore ST1012 skip is not a real error, more a wrapper of one.
 	skip = errors.New("handler requests to skip value and continue")
-	//lint:ignore ST1012 Abort is not a real error, more a wrapper of one.
+	//lint:ignore ST1012 abort is not a real error, more a wrapper of one.
 	abort = errors.New("handler requests to abort processing and exit")
 )
 

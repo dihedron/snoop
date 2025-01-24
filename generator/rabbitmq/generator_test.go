@@ -14,7 +14,7 @@ import (
 )
 
 func TestRabbitMQContext(t *testing.T) {
-	test.Setup(t, test.Text)
+	test.Setup(t)
 	godotenv.Load()
 
 	rmq := &RabbitMQ{}

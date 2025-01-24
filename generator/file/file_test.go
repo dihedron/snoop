@@ -11,7 +11,7 @@ import (
 )
 
 func TestFileContextGenerator(t *testing.T) {
-	test.Setup(t, test.Text)
+	test.Setup(t)
 	slog.Info("test with cancellation after 10 items")
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -22,7 +22,7 @@ func TestFileContextGenerator(t *testing.T) {
 }
 
 func TestFilesGenerator(t *testing.T) {
-	test.Setup(t, test.Text)
+	test.Setup(t)
 	slog.Info("test with one file")
 	for n := range Lines("test.txt") {
 		slog.Debug("received item", "value", n)

@@ -2,6 +2,7 @@ package processor
 
 import (
 	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -9,9 +10,11 @@ import (
 	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/generator/integer"
 	"github.com/dihedron/snoop/generator/random"
+	"github.com/dihedron/snoop/test"
 )
 
 func Log[T any](t *testing.T) Handler[T] {
+	test.Setup(t)
 	return func(value T) (T, error) {
 		t.Logf("value flowing through: %v (type: %T)\n", value, value)
 		return value, nil
@@ -26,6 +29,7 @@ func TestFibonacciChain(t *testing.T) {
 		count       int64
 		accumulator []int64 = []int64{}
 	)
+	test.Setup(t)
 	chain := Chain(
 		Profile[int64](&start, nil),
 		Log[int64](t),
@@ -41,7 +45,7 @@ func TestFibonacciChain(t *testing.T) {
 			break
 		}
 	}
-	t.Logf("final result: items %d, accumulator: %v, buffer:\n%s", count, accumulator, buffer.String())
+	slog.Info("final result", "items", count, "accumulator", accumulator, "buffer", buffer.String())
 }
 
 func TestRandomChain(t *testing.T) {
@@ -52,6 +56,7 @@ func TestRandomChain(t *testing.T) {
 		count       int64
 		accumulator []int64 = []int64{}
 	)
+	test.Setup(t)
 	chain := Chain(
 		Profile[int64](&start, nil),
 		Log[int64](t),
@@ -67,7 +72,7 @@ func TestRandomChain(t *testing.T) {
 			break
 		}
 	}
-	t.Logf("final result: items %d, accumulator: %v, buffer:\n%s", count, accumulator, buffer.String())
+	slog.Info("final result", "items", count, "accumulator", accumulator, "buffer", buffer.String())
 }
 
 func TestFileChain(t *testing.T) {
@@ -78,6 +83,7 @@ func TestFileChain(t *testing.T) {
 		count       int64
 		accumulator []string = []string{}
 	)
+	test.Setup(t)
 	chain := Chain(
 		Profile[string](&start, nil),
 		Log[string](t),
@@ -93,7 +99,7 @@ func TestFileChain(t *testing.T) {
 			break
 		}
 	}
-	t.Logf("final result: items %d, accumulator: %v, buffer:\n%s", count, accumulator, buffer.String())
+	slog.Info("final result", "items", count, "accumulator", accumulator, "buffer", buffer.String())
 }
 
 func TestSequenceWithSkipOddChain(t *testing.T) {
@@ -104,6 +110,7 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 		count       int64
 		accumulator []int64 = []int64{}
 	)
+	test.Setup(t)
 	chain := Chain(
 		Profile[int64](&start, nil),
 		Log[int64](t),
@@ -120,5 +127,5 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 			break
 		}
 	}
-	t.Logf("final result: items %d, accumulator: %v, buffer:\n%s", count, accumulator, buffer.String())
+	slog.Info("final result", "items", count, "accumulator", accumulator, "buffer", buffer.String())
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func TestSequenceContextGenerator(t *testing.T) {
-	test.Setup(t, test.Text)
+	test.Setup(t)
 	slog.Info("test with increasing sequence (from: 0, to: 100, step: 2) and cancellation after ~10 items")
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()

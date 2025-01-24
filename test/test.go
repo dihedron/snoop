@@ -14,9 +14,9 @@ const (
 	Text
 )
 
-func Setup(t *testing.T, format Format) {
+func Setup(t *testing.T, format ...Format) {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	if format == JSON {
+	if format != nil && format[0] == JSON {
 		slog.SetDefault(slogt.New(t, slogt.JSON()))
 	} else {
 		slog.SetDefault(slogt.New(t, slogt.Text()))
