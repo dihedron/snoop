@@ -3,10 +3,23 @@ package experiment
 import "fmt"
 
 // Define a generic type for the function in the chain
-type Handler[S any, T any] func(S) (T, error)
+type Transformer[S any, T any] func(S) (T, error)
 
-// Chain creates a chain of functions
-func Chain[S any, T any, U any](first Handler[S, T], second Handler[T, U]) Handler[S, U] {
+type Filter[T any] = Transformer[T, T]
+
+// FollowedBy does not work, but it would be the best solution.
+func (before Transformer[S, T]) FollowedBy(after Transformer[T, any]) Transformer[S, any] {
+	return func(s S) (any, error) {
+		t, err := before(s)
+		if err != nil {
+			return nil, err
+		}
+		return after(t)
+	}
+}
+
+// Apply creates a chain of functions
+func Apply[S any, T any, U any](first Transformer[S, T], second Transformer[T, U]) Transformer[S, U] {
 	return func(s S) (U, error) {
 		t, err := first(s)
 		if err != nil {
@@ -15,6 +28,10 @@ func Chain[S any, T any, U any](first Handler[S, T], second Handler[T, U]) Handl
 		}
 		return second(t)
 	}
+}
+
+func Then[S any, T any, U any](first Transformer[S, T], second Transformer[T, U]) Transformer[S, U] {
+	return Apply(first, second)
 }
 
 func ChainTogether() {
@@ -34,9 +51,9 @@ func ChainTogether() {
 	}
 
 	// Chain the functions together
-	chainedFunc := Chain(
+	chainedFunc := Apply(
 		StringToInt,
-		Chain(
+		Then(
 			IntToDouble,
 			DoubleToString,
 		),

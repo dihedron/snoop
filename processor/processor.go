@@ -8,17 +8,7 @@ import (
 	"time"
 )
 
-// Handler is the type of a value processor.
-type Handler[T any] func(value T) (T, error)
-
-// type Error struct {
-// 	message string
-// 	wrapped error
-// }
-
-// func (e *Error) Error() string {
-// 	return fmt.Sprintf(e.message, e.wrapped)
-// }
+type Handler[T any] func(T) (T, error)
 
 var (
 	//lint:ignore ST1012 skip is not a real error, more a wrapper of one.
@@ -104,8 +94,8 @@ func Record[T any](writer io.Writer, format string, lenient bool) Handler[T] {
 	}
 }
 
-// Skip skips the value if the condition is true.
-func Skip[T any](cond func(value T) bool) Handler[T] {
+// SkipValue skips the value if the condition is true.
+func SkipValue[T any](cond func(value T) bool) Handler[T] {
 	return func(value T) (T, error) {
 		var nihil T
 		if cond(value) {
