@@ -9,6 +9,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/juju/rfc/v2 v2.0.0
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/neilotoole/slogt v1.1.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/streamdal/rabbit v0.1.26
 	gopkg.in/yaml.v3 v3.0.1
@@ -20,7 +21,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/juju/errors v1.0.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/neilotoole/slogt v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
@@ -30,4 +30,5 @@ require (
 )
 
 //replace github.com/streamdal/rabbit => github.com/dihedron/rabbit v0.1.15-0.20250108113512-27f0017f4655
+
 replace github.com/streamdal/rabbit => ../rabbit
