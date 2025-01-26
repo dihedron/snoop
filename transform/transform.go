@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-// X strands for transformation; it is the generic type for a
+// X stands for transformation; it is the generic type for a
 // function in the transformer chain, which accepts a type and
 // returns a potentially different one.
 type X[S any, T any] func(S) (T, error)
@@ -25,14 +25,11 @@ var (
 // the other and bailing out as soon as an error is encountered.
 func Apply[S any, T any, U any](first X[S, T], second X[T, U]) X[S, U] {
 	return func(s S) (U, error) {
-		// slog.Debug("calling first...")
 		t, err := first(s)
 		if err != nil {
 			var u U
-			// slog.Error("error executing first transformer", "error", err)
 			return u, err
 		}
-		// slog.Debug("calling second...")
 		return second(t)
 	}
 }
