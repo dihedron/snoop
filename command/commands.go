@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/dihedron/snoop/command/process"
+	"github.com/dihedron/snoop/command/record"
 	"github.com/dihedron/snoop/command/version"
 )
 
@@ -24,7 +24,10 @@ type Commands struct {
 	// Store store.Store `command:"store" alias:"s" description:"Manage data in the cluster K/V store."`
 
 	// Process runs the snoop command against the RabbitMS server as specified in the configuration.
-	Process process.Process `command:"process" alias:"p" description:"Run the snoop utility against RabbitMQ."`
+	//Process process.Process `command:"process" alias:"p" description:"Run the snoop utility against RabbitMQ."`
+
+	// Record reads messages from RabbitMQ and outputs them (to disk or STDOUT).
+	Record record.Record `command:"record" alias:"r" description:"Read messages from RabbitMQ and output them (to disk or STDOUT)."`
 
 	// Version prints brokerd version information and exits.
 	//lint:ignore SA5008 commands can have multiple aliases

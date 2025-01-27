@@ -20,7 +20,7 @@ type ConfiguredCommand struct {
 	// no value is provided (neither on the command line nor in the environment via the
 	// SNOOP_CONFIGURATION variable), the application will look for a viable configuration
 	// file named XXX under a few well-known paths: /etc, the current directory etc.
-	Configuration string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes" env:"SNOOP_CONFIGURATION"`
+	Configuration *string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes" env:"SNOOP_CONFIGURATION"`
 }
 
 func (cmd *Command) ProfileCPU() *Closer {

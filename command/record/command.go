@@ -1,29 +1,63 @@
-package process
+package record
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"time"
 
+	"github.com/dihedron/rawdata"
 	"github.com/dihedron/snoop/command/base"
+	"github.com/dihedron/snoop/format"
+	"github.com/dihedron/snoop/generator/rabbitmq"
 )
 
 // Record is the command that reads message from RabbitMQ and dumps them
 // out to standard output or to a file.
-// ./brokerd record --configuration=tests/rabbitmq/brokerd.yaml --output=20220818.amqp.messages
-type Process struct {
+// ./snoop record --configuration=tests/rabbitmq/brokerd.yaml --output=20220818.amqp.messages
+type Record struct {
 	base.ConfiguredCommand
-	// Output is the path to the file to write to; the default value is
-	// "<stdout>", which means that the messages will be dumped to STDOUT.
-	Output string `short:"o" long:"output" description:"The path to the file to write to, or stdout." required:"yes" default:"<stdout>"`
-	// Truncate is used to specify whether the output file (if the path
-	// refers to a file on disk) should be truncated before writing to it.
+	// Truncate is used to specify whether the output file (if one is
+	// specified) should be truncated before writing to it.
 	Truncate bool `short:"t" long:"truncate" description:"Whether the output file should be truncated or appended to (default)." optional:"yes"`
-	// TODO: remove once checked
-	// Configuration string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes"`
 }
 
 // Execute is the real implementation of the Record command.
-func (cmd *Process) Execute(args []string) error {
+func (cmd *Record) Execute(args []string) error {
 	slog.Debug("draining and recording messages from RabbitMQ")
+
+	if cmd.Configuration == nil {
+		slog.Error("no configuration provided")
+		return errors.New("no configuration provided")
+	}
+
+	slog.Debug("reading configuration", "configuration", *cmd.Configuration)
+
+	rmq := &rabbitmq.RabbitMQ{}
+	err := rawdata.UnmarshalInto("@"+*cmd.Configuration, rmq)
+	if err != nil {
+		slog.Error("error reading configuration file", "error", err)
+	}
+	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
+
+	// fmt.Printf("%s\n", format.ToPrettyJSON(rmq))
+
+	options := rmq.ToOptions()
+	slog.Debug("RabbitMQ options in JSON format", "options", format.ToJSON(options))
+
+	fmt.Printf("%s\n", format.ToPrettyJSON(options))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	defer cancel()
+	count := 0
+	for m := range rabbitmq.RabbitMQContext(ctx, rmq) {
+		count++
+		if count == 10 {
+			break
+		}
+		slog.Debug("message received", "value", format.ToPrettyJSON(m))
+	}
 
 	/*
 			// read configuration
