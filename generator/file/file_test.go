@@ -27,12 +27,16 @@ func TestFilesGenerator(t *testing.T) {
 	for n := range Lines("test.txt") {
 		slog.Debug("received item", "value", n)
 	}
-	slog.Info("test with two files")
-	for n := range concat.Concat(Lines("test.txt"), Lines("test.txt")) {
-		slog.Debug("received item", "value", n)
-	}
 	slog.Info("test with non-existing file")
 	for n := range Lines("non_existing.txt") {
+		slog.Debug("received item", "value", n)
+	}
+}
+
+func TestConcatFilesGenerator(t *testing.T) {
+	test.Setup(t)
+	slog.Info("test with two files")
+	for n := range concat.Concat(Lines("a2m.txt"), Lines("n2z.txt")) {
 		slog.Debug("received item", "value", n)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dihedron/snoop/format"
+	"github.com/dihedron/snoop/generator/concat"
 	"github.com/dihedron/snoop/generator/fibonacci"
 	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/generator/integer"
@@ -24,14 +25,12 @@ func Log[T any](t *testing.T) F[T] {
 }
 
 func TestFibonacciChain(t *testing.T) {
-	var (
-		buffer      bytes.Buffer
-		accumulator []int64 = []int64{}
-	)
 	test.Setup(t)
+	var buffer bytes.Buffer
 
 	stopwatch := &StopWatch[int64, int64]{}
 	counter := &Counter[int64]{}
+	accumulator := &Accumulator[int64]{}
 
 	transform := Apply(
 		stopwatch.Start(),
@@ -44,7 +43,7 @@ func TestFibonacciChain(t *testing.T) {
 					Then(
 						counter.Add(),
 						Then(
-							Accumulate(&accumulator),
+							accumulator.Add(),
 							stopwatch.Stop(),
 						),
 					),
@@ -61,14 +60,13 @@ func TestFibonacciChain(t *testing.T) {
 }
 
 func TestRandomChain(t *testing.T) {
-	var (
-		buffer      bytes.Buffer
-		accumulator []int64 = []int64{}
-	)
 	test.Setup(t)
+
+	var buffer bytes.Buffer
 
 	stopwatch := &StopWatch[int64, int64]{}
 	counter := &Counter[int64]{}
+	accumulator := &Accumulator[int64]{}
 
 	transform := Apply(
 		stopwatch.Start(),
@@ -81,7 +79,7 @@ func TestRandomChain(t *testing.T) {
 					Then(
 						counter.Add(),
 						Then(
-							Accumulate(&accumulator),
+							accumulator.Add(),
 							stopwatch.Stop(),
 						),
 					),
@@ -99,14 +97,13 @@ func TestRandomChain(t *testing.T) {
 }
 
 func TestFileChain(t *testing.T) {
-	var (
-		buffer      bytes.Buffer
-		accumulator []string = []string{}
-	)
 	test.Setup(t)
+
+	var buffer bytes.Buffer
 
 	stopwatch := &StopWatch[string, string]{}
 	counter := &Counter[string]{}
+	accumulator := &Accumulator[string]{}
 
 	transform := Apply[string, string](
 		stopwatch.Start(),
@@ -119,7 +116,7 @@ func TestFileChain(t *testing.T) {
 					Then[string, string](
 						counter.Add(),
 						Then(
-							Accumulate(&accumulator),
+							accumulator.Add(),
 							stopwatch.Stop(),
 						),
 					),
@@ -136,14 +133,11 @@ func TestFileChain(t *testing.T) {
 }
 
 func TestSequenceWithSkipOddChain(t *testing.T) {
-	var (
-		buffer      bytes.Buffer
-		accumulator []int64 = []int64{}
-	)
 	test.Setup(t)
-
+	var buffer bytes.Buffer
 	stopwatch := &StopWatch[int64, int64]{}
 	counter := &Counter[int64]{}
+	accumulator := &Accumulator[int64]{}
 
 	transform := Apply(
 		stopwatch.Start(),
@@ -158,7 +152,7 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 						Then(
 							Record[int64](&buffer, "%d\n", true),
 							Then(
-								Accumulate(&accumulator),
+								accumulator.Add(),
 								stopwatch.Stop(),
 							),
 						),
@@ -173,4 +167,116 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 		}
 	}
 	slog.Info("final result", "elapsed", stopwatch.Elapsed().String(), "items", counter.Count(), "accumulator", accumulator, "buffer", buffer.String())
+}
+
+func TestCatenate(t *testing.T) {
+	test.Setup(t)
+
+	var buffer bytes.Buffer
+
+	stopwatch := &StopWatch[int64, string]{}
+	counter := &Counter[int64]{}
+	catenator := &Catenator[string]{Join: ", "}
+
+	transform := Apply(
+		stopwatch.Start(),
+		Then(
+			Log[int64](t),
+			Then(
+				Delay[int64](50*time.Millisecond),
+				Then(
+					Record[int64](&buffer, "%d\n", true),
+					Then(
+						counter.Add(),
+						Then(
+							ToString[int64](),
+							Then(
+								catenator.Add(),
+								stopwatch.Stop(),
+							),
+						),
+					),
+				),
+			),
+		),
+	)
+
+	for value := range random.Sequence(0, 1_000) {
+		if _, err := transform(value); err != nil || counter.Count() >= 10 {
+			break
+		}
+	}
+	slog.Info("final result", "elapsed", stopwatch.Elapsed().String(), "items", counter.Count(), "catenator", catenator.Value(), "buffer", buffer.String())
+}
+
+func TestCacheFromFile(t *testing.T) {
+	test.Setup(t)
+
+	var buffer bytes.Buffer
+
+	stopwatch := &StopWatch[string, string]{}
+	counter := &Counter[string]{}
+	cache := &Cache[string, string]{}
+
+	transform := Apply[string, string](
+		stopwatch.Start(),
+		Then(
+			Log[string](t),
+			Then(
+				Delay[string](50*time.Millisecond),
+				Then(
+					Record[string](&buffer, "%s\n", true),
+					Then[string, string](
+						counter.Add(),
+						Then(
+							cache.Set(func(s string) string { return s[:1] }),
+							stopwatch.Stop(),
+						),
+					),
+				),
+			),
+		),
+	)
+	for value := range file.Lines("../generator/file/test.txt") {
+		if _, err := transform(value); err != nil || counter.Count() >= 10 {
+			break
+		}
+	}
+	slog.Info("final result", "elapsed", stopwatch.Elapsed().String(), "items", counter.Count(), "cache", cache, "buffer", buffer.String())
+}
+
+func TestMultipleCacheFromMultipleFiles(t *testing.T) {
+	test.Setup(t)
+
+	var buffer bytes.Buffer
+
+	stopwatch := &StopWatch[string, string]{}
+	counter := &Counter[string]{}
+	multicache := &MultiCache[string, string]{}
+
+	transform := Apply(
+		stopwatch.Start(),
+		Then(
+			Log[string](t),
+			Then(
+				Delay[string](50*time.Millisecond),
+				Then(
+					Record[string](&buffer, "%s\n", true),
+					Then(
+						counter.Add(),
+						Then(
+							multicache.Set(func(s string) string { return s[:1] }),
+							stopwatch.Stop(),
+						),
+					),
+				),
+			),
+		),
+	)
+	for value := range concat.Concat(file.Lines("../generator/file/test.txt"), file.Lines("../generator/file/test.txt")) {
+		if _, err := transform(value); err != nil {
+			break
+		}
+	}
+	slog.Info("final result", "elapsed", stopwatch.Elapsed().String(), "items", counter.Count(), "multicache", multicache, "buffer", buffer.String())
 }
