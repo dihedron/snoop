@@ -33,6 +33,14 @@ func TestFilesGenerator(t *testing.T) {
 	}
 }
 
+func TestMultipleFilesGenerator(t *testing.T) {
+	test.Setup(t)
+	slog.Info("test with two files")
+	for n := range Lines("a2m.txt", "n2z.txt") {
+		slog.Debug("received item", "value", n)
+	}
+}
+
 func TestConcatFilesGenerator(t *testing.T) {
 	test.Setup(t)
 	slog.Info("test with two files")

@@ -1,9 +1,10 @@
 package oslo
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
+
+	"github.com/goccy/go-json"
 
 	"github.com/dihedron/snoop/openstack/amqp"
 )

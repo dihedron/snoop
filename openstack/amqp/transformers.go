@@ -1,9 +1,10 @@
 package amqp
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
+
+	"github.com/goccy/go-json"
 
 	"github.com/rabbitmq/amqp091-go"
 )

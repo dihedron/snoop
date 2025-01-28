@@ -7,6 +7,13 @@ import (
 	"github.com/dihedron/snoop/transform"
 )
 
+// StringToByteArray converts a string to a []byte.
+func StringToByteArray() transform.X[string, []byte] {
+	return func(value string) ([]byte, error) {
+		return []byte(value), nil
+	}
+}
+
 // ToString transforms any input type into a string representation.
 func ToString[T any]() transform.X[T, string] {
 	return func(value T) (string, error) {

@@ -1,7 +1,6 @@
 package syslog
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	"github.com/juju/rfc/v2/rfc5424"
 )

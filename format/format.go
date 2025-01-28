@@ -1,11 +1,12 @@
 package format
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/goccy/go-json"
 
 	"gopkg.in/yaml.v3"
 )

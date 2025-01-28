@@ -1,8 +1,9 @@
 package notification
 
 import (
-	"encoding/json"
 	"log/slog"
+
+	"github.com/goccy/go-json"
 
 	"github.com/dihedron/snoop/format"
 	amqp091 "github.com/rabbitmq/amqp091-go"
@@ -14,16 +15,6 @@ type Notification interface {
 	// which allows to identify its type and correlate it with adjacent
 	// notifications in the same event sequence.
 	Summary() *Summary
-
-	// // Ack allows to acknowledge the original amqp091.Delivery if set inside the
-	// // BaseNotification.
-	// Ack(multiple bool) error
-
-	// // BackRef returns the (possibly nil) reference to the original amqp091.Delivery.
-	// BackRef() *amqp091.Delivery
-
-	// // SetBackRef sets the reference to the original amqp091.Delivery.
-	// SetBackRef(delivery *amqp091.Delivery)
 }
 
 // String returns a string representation of Base notification as a JSON one-liner.

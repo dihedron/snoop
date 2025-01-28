@@ -1,11 +1,12 @@
 package notification
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
+
+	"github.com/goccy/go-json"
 
 	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/openstack/oslo"

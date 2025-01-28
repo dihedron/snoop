@@ -5,12 +5,14 @@ go 1.23.4
 require (
 	github.com/dihedron/rawdata v1.0.1
 	github.com/go-playground/validator/v10 v10.24.0
+	github.com/goccy/go-json v0.10.5
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/juju/rfc/v2 v2.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/neilotoole/slogt v1.1.0
 	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/streamdal/rabbit v0.1.26
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -21,11 +23,14 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/juju/errors v1.0.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
 

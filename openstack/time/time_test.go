@@ -1,9 +1,10 @@
 package time
 
 import (
-	"encoding/json"
 	"log/slog"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"github.com/dihedron/snoop/test"
 )

@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/dihedron/snoop/command/playback"
 	"github.com/dihedron/snoop/command/record"
 	"github.com/dihedron/snoop/command/version"
 )
@@ -28,6 +29,9 @@ type Commands struct {
 
 	// Record reads messages from RabbitMQ and outputs them (to disk or STDOUT).
 	Record record.Record `command:"record" alias:"r" description:"Read messages from RabbitMQ and output them (to disk or STDOUT)."`
+
+	// Playback reads messages from a text file and outputs them (to disk or STDOUT).
+	Playback playback.Playback `command:"playback" alias:"p" description:"Plays messages back from a recording on disk."`
 
 	// Version prints brokerd version information and exits.
 	//lint:ignore SA5008 commands can have multiple aliases
