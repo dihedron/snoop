@@ -19,7 +19,7 @@ import (
 
 // Embed the file content as string.
 //
-//go:embed template.tmpl
+//go:embed seeker.tmpl
 var format string
 
 // Playback is the command that reads message from a recording on file and
