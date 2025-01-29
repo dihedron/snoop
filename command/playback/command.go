@@ -2,6 +2,7 @@ package playback
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,6 +16,11 @@ import (
 	. "github.com/dihedron/snoop/transform"
 	"github.com/dihedron/snoop/transformers"
 )
+
+// Embed the file content as string.
+//
+//go:embed template.tmpl
+var format string
 
 // Playback is the command that reads message from a recording on file and
 // processes them one by one.
@@ -35,22 +41,20 @@ func (cmd *Playback) Execute(args []string) error {
 	stopwatch := &transformers.StopWatch[string, string]{}
 	counter := &transformers.Counter[string]{}
 
-	format := `---
-{{ with .Summary -}}
-Type            : {{ .EventType }}
-User ID         : {{ .UserID }}
-UserName        : {{ .UserName }}
-ProjectID       : {{ .ProjectID }}
-ProjectName     : {{ .ProjectName }}
-RequestID       : {{ .RequestID }}
-GlobalRequestID : {{ .GlobalRequestID }}
-{{- end }}
-`
-
-	// try to fix this in template:
-	// {{ if .EventType eq "compute.instance.update" -}}
-	// DisplayName     : {{ .DisplayName }}
+	// 	format := `---
+	// {{ with .Summary -}}
+	// Type            : {{ .EventType | red }}
+	// User ID         : {{ .UserID }}
+	// UserName        : {{ .UserName }}
+	// ProjectID       : {{ .ProjectID }}
+	// ProjectName     : {{ .ProjectName }}
+	// RequestID       : {{ .RequestID }}
+	// GlobalRequestID : {{ .GlobalRequestID }}
 	// {{- end }}
+	// {{if hasPrefix "compute.instance." .EventType -}}
+	// VM Hostname     : {{ .Payload.DisplayName }}
+	// {{- end }}
+	// `
 
 	chain := Apply(
 		stopwatch.Start(),
