@@ -19,7 +19,7 @@ import (
 
 // Embed the file content as string.
 //
-//go:embed seeker.tmpl
+//go:embed auth_failed.tmpl
 var format string
 
 // Playback is the command that reads message from a recording on file and
