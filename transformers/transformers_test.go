@@ -148,7 +148,7 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 				Then(
 					counter.Add(),
 					Then(
-						Filter(func(value int64) bool { return value%2 == 0 }),
+						AcceptIf(func(value int64) bool { return value%2 == 0 }),
 						Then(
 							Record[int64](&buffer, "%d\n", true),
 							Then(
