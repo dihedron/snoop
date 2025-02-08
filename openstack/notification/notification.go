@@ -54,8 +54,8 @@ type Summary struct {
 }
 
 // Commons is the base set of information contained in all
-// OpenStack events, both from Nova and from Neutron; it does not
-// implement the Notification interface.
+// OpenStack events, both from Nova and from Neutron; it
+// implements the Notification interface.
 type Base struct {
 	MessageID              string           `json:"message_id,omitempty" yaml:"message_id,omitempty"`
 	PublisherID            string           `json:"publisher_id,omitempty" yaml:"publisher_id,omitempty"`
