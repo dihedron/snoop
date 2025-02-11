@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/dihedron/snoop/command/check"
 	"github.com/dihedron/snoop/command/playback"
 	"github.com/dihedron/snoop/command/record"
 	"github.com/dihedron/snoop/command/version"
@@ -26,6 +27,9 @@ type Commands struct {
 
 	// Process runs the snoop command against the RabbitMS server as specified in the configuration.
 	//Process process.Process `command:"process" alias:"p" description:"Run the snoop utility against RabbitMQ."`
+
+	// Check checks the connectivity to RabbitMQ.
+	Check check.Check `command:"check" alias:"c" description:"Try to connect to the RabbitMQ server."`
 
 	// Record reads messages from RabbitMQ and outputs them (to disk or STDOUT).
 	Record record.Record `command:"record" alias:"r" description:"Read messages from RabbitMQ and output them (to disk or STDOUT)."`

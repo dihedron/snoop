@@ -47,10 +47,10 @@ func (cmd *Record) Execute(args []string) error {
 
 	// fmt.Printf("%s\n", format.ToPrettyJSON(rmq))
 
-	options := rmq.ToOptions()
-	slog.Debug("RabbitMQ options in JSON format", "options", format.ToJSON(options))
+	// options := rmq.ToOptions()
+	// slog.Debug("RabbitMQ options in JSON format", "options", format.ToJSON(options))
 
-	fmt.Printf("%s\n", format.ToYAML(options))
+	// fmt.Printf("%s\n", format.ToYAML(options))
 
 	// now prepare the processing chain
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
@@ -69,7 +69,7 @@ func (cmd *Record) Execute(args []string) error {
 	)
 
 	count := 0
-	for m := range rabbitmq.RabbitMQContext(ctx, rmq) {
+	for m := range rmq.All(ctx) {
 		count++
 		if count == 10 {
 			break
@@ -82,6 +82,9 @@ func (cmd *Record) Execute(args []string) error {
 			fmt.Printf("AMQP delivery: %s\n", format.ToPrettyJSON(m))
 			fmt.Printf("AMQP message: %s\n", value)
 		}
+	}
+	if err := rmq.Error(); err != nil {
+		slog.Error("error connecting to RabbitMQ", "error", err)
 	}
 
 	/*

@@ -21,17 +21,30 @@ func TestRabbitMQContext(t *testing.T) {
 	rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToPrettyJSON(rmq))
 
-	options := rmq.ToOptions()
-	slog.Debug("RabbitMQ options in JSON format", "configuration", format.ToPrettyJSON(options))
-
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
 	count := 0
-	for m := range RabbitMQContext(ctx, rmq) {
+	for m := range rmq.All(ctx) {
 		count++
 		if count == 10 {
 			break
 		}
 		slog.Debug("message received", "value", format.ToPrettyJSON(m))
 	}
+	if err := rmq.Error(); err != nil {
+		slog.Error("error iterating over RabbitMQ messages", "error", err)
+	}
+}
+
+func TestRabbitMQConfigurationAndValidation(t *testing.T) {
+	test.Setup(t)
+	godotenv.Load()
+
+	rmq := &RabbitMQ{}
+	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
+
+	rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
+	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
+
+	rmq.validate()
 }
