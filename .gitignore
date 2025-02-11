@@ -21,6 +21,7 @@ dist/
 # Local testing directory
 _tests/
 generator/rabbitmq/.env
+output/
 
 # Go workspace file
 go.work

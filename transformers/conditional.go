@@ -31,23 +31,11 @@ func AcceptUnless[T any](condition func(value T) bool) transform.X[T, T] {
 // DropIf drops the value if the condition is true. If the condition is
 // false, this filter does not affect the value flowing through.
 func DropIf[T any](condition func(value T) bool) transform.X[T, T] {
-	return func(value T) (T, error) {
-		if !condition(value) {
-			return value, nil
-		}
-		var nihil T
-		return nihil, transform.Drop
-	}
+	return AcceptUnless(condition)
 }
 
 // DropUnless drops the value if the condition is false. If the condition
 // is true, this filter does not affect the value flowing through.
 func DropUnless[T any](condition func(value T) bool) transform.X[T, T] {
-	return func(value T) (T, error) {
-		if condition(value) {
-			return value, nil
-		}
-		var nihil T
-		return nihil, transform.Drop
-	}
+	return AcceptIf(condition)
 }

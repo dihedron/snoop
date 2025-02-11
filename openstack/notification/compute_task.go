@@ -22,7 +22,7 @@ type ComputeTaskPayload struct {
 			CreatedAt       string `json:"created_at,omitempty" yaml:"created_at,omitempty"`
 			UpdatedAt       string `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
 			MinRAM          int    `json:"min_ram,omitempty" yaml:"min_ram,omitempty"`
-			MinDisk         int    `json:"min_disk,omitempty" yaml:"min_ram,omitempty"`
+			MinDisk         int    `json:"min_disk,omitempty" yaml:"min_disk,omitempty"`
 			Properties      struct {
 				HwArchitecture   string `json:"hw_architecture"`
 				HwDiskBus        string `json:"hw_disk_bus,omitempty" yaml:"hw_disk_bus,omitempty"`

@@ -8,16 +8,30 @@ import (
 	"github.com/dihedron/snoop/transform"
 )
 
-// Record records the messages to the given writer. This filter
+// Write records the messages to the given writer. This filter
 // does not affect the value flowing through.
-func Record[T any](writer io.Writer, format string, lenient bool) transform.X[T, T] {
-	return RecordIf[T](writer, format, lenient, func(value T) bool { return true })
+func Write[T any](writer io.Writer, lenient bool) transform.X[T, T] {
+	return WritefIf[T](writer, "%v", lenient, func(value T) bool { return true })
 }
 
-// RecordIf records the messages to the given writer if the given
+// Writef records the messages to the given writer, applying
+// the given format to convert it into a []byte. This filter
+// does not affect the value flowing through.
+func Writef[T any](writer io.Writer, format string, lenient bool) transform.X[T, T] {
+	return WritefIf[T](writer, format, lenient, func(value T) bool { return true })
+}
+
+// WriteIf records the messages to the given writer if the given
 // condition is true. This filter does not affect the value flowing
 // through.
-func RecordIf[T any](writer io.Writer, format string, lenient bool, condition func(value T) bool) transform.X[T, T] {
+func WriteIf[T any](writer io.Writer, lenient bool, condition func(value T) bool) transform.X[T, T] {
+	return WritefIf(writer, "%v", lenient, condition)
+}
+
+// WritefIf records the messages to the given writer if the given
+// condition is true, applying the given format to convert the value
+// to a []byte. This filter does not affect the value flowing through.
+func WritefIf[T any](writer io.Writer, format string, lenient bool, condition func(value T) bool) transform.X[T, T] {
 	if format == "" {
 		format = "%v"
 	}
@@ -36,9 +50,16 @@ func RecordIf[T any](writer io.Writer, format string, lenient bool, condition fu
 	}
 }
 
-// RecordUnless records the messages to the given writer unless the given
+// WriteUnless records the messages to the given writer unless the given
 // condition is true. This filter does not affect the value flowing through.
-func RecordUnless[T any](writer io.Writer, format string, lenient bool, condition func(value T) bool) transform.X[T, T] {
+func WriteUnless[T any](writer io.Writer, lenient bool, condition func(value T) bool) transform.X[T, T] {
+	return WritefUnless(writer, "%v", lenient, condition)
+}
+
+// WritefUnless records the messages to the given writer unless the given
+// condition is true, applying the given format to convert it to a []byte.
+// This filter does not affect the value flowing through.
+func WritefUnless[T any](writer io.Writer, format string, lenient bool, condition func(value T) bool) transform.X[T, T] {
 	return func(value T) (T, error) {
 		if !condition(value) {
 			_, err := writer.Write([]byte(fmt.Sprintf(format, value)))

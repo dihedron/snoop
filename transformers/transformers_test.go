@@ -39,7 +39,7 @@ func TestFibonacciChain(t *testing.T) {
 			Then(
 				Delay[int64](50*time.Millisecond),
 				Then(
-					Record[int64](&buffer, "%d\n", true),
+					Writef[int64](&buffer, "%d\n", true),
 					Then(
 						counter.Add(),
 						Then(
@@ -75,7 +75,7 @@ func TestRandomChain(t *testing.T) {
 			Then(
 				Delay[int64](50*time.Millisecond),
 				Then(
-					Record[int64](&buffer, "%d\n", true),
+					Writef[int64](&buffer, "%d\n", true),
 					Then(
 						counter.Add(),
 						Then(
@@ -112,7 +112,7 @@ func TestFileChain(t *testing.T) {
 			Then(
 				Delay[string](50*time.Millisecond),
 				Then(
-					Record[string](&buffer, "%s\n", true),
+					Writef[string](&buffer, "%s\n", true),
 					Then[string, string](
 						counter.Add(),
 						Then(
@@ -150,7 +150,7 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 					Then(
 						AcceptIf(func(value int64) bool { return value%2 == 0 }),
 						Then(
-							Record[int64](&buffer, "%d\n", true),
+							Writef[int64](&buffer, "%d\n", true),
 							Then(
 								accumulator.Add(),
 								stopwatch.Stop(),
@@ -185,7 +185,7 @@ func TestCatenate(t *testing.T) {
 			Then(
 				Delay[int64](50*time.Millisecond),
 				Then(
-					Record[int64](&buffer, "%d\n", true),
+					Writef[int64](&buffer, "%d\n", true),
 					Then(
 						counter.Add(),
 						Then(
@@ -225,7 +225,7 @@ func TestCacheFromFile(t *testing.T) {
 			Then(
 				Delay[string](50*time.Millisecond),
 				Then(
-					Record[string](&buffer, "%s\n", true),
+					Writef[string](&buffer, "%s\n", true),
 					Then[string, string](
 						counter.Add(),
 						Then(
@@ -261,7 +261,7 @@ func TestMultipleCacheFromMultipleFiles(t *testing.T) {
 			Then(
 				Delay[string](50*time.Millisecond),
 				Then(
-					Record[string](&buffer, "%s\n", true),
+					Writef[string](&buffer, "%s\n", true),
 					Then(
 						counter.Add(),
 						Then(

@@ -38,3 +38,22 @@ func Apply[S any, T any, U any](first X[S, T], second X[T, U]) X[S, U] {
 func Then[S any, T any, U any](first X[S, T], second X[T, U]) X[S, U] {
 	return Apply(first, second)
 }
+
+// ThenElse concatenates the first transform with one of the two
+// transforms ("either" and "or") based on a condition on the
+// output value of the first transform. The types of the "either"
+// and "or" transforms must be the same. This allows to apply
+// conditional processing based on a test.
+func ThenElse[S any, T any, U any](first X[S, T], condition func(value T) bool, either X[T, U], or X[T, U]) X[S, U] {
+	return func(s S) (U, error) {
+		t, err := first(s)
+		if err != nil {
+			var u U
+			return u, err
+		}
+		if condition(t) {
+			return either(t)
+		}
+		return or(t)
+	}
+}

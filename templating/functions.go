@@ -126,6 +126,7 @@ var (
 	red       = color.New(color.FgRed).SprintFunc()
 	yellow    = color.New(color.FgYellow).SprintFunc()
 	white     = color.New(color.FgWhite).SprintFunc()
+	grey      = color.RGB(10, 10, 10).SprintFunc()
 	hiblue    = color.New(color.FgHiBlue).SprintFunc()
 	hicyan    = color.New(color.FgHiCyan).SprintFunc()
 	higreen   = color.New(color.FgHiGreen).SprintFunc()
@@ -189,4 +190,8 @@ func Yellow(v any) string {
 
 func White(v any) string {
 	return white(v)
+}
+
+func Grey(v any) string {
+	return grey(v)
 }

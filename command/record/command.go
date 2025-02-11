@@ -11,6 +11,10 @@ import (
 	"github.com/dihedron/snoop/command/base"
 	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/generator/rabbitmq"
+	"github.com/dihedron/snoop/openstack/amqp"
+	. "github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transformers"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 // Record is the command that reads message from RabbitMQ and dumps them
@@ -46,17 +50,38 @@ func (cmd *Record) Execute(args []string) error {
 	options := rmq.ToOptions()
 	slog.Debug("RabbitMQ options in JSON format", "options", format.ToJSON(options))
 
-	fmt.Printf("%s\n", format.ToPrettyJSON(options))
+	fmt.Printf("%s\n", format.ToYAML(options))
 
+	// now prepare the processing chain
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
+
+	stopwatch := &transformers.StopWatch[*amqp091.Delivery, []byte]{}
+	chain := Apply(
+		stopwatch.Start(),
+		Then(
+			amqp.DeliveryToMessage(false),
+			Then(
+				transformers.ToJSON[*amqp.Message](),
+				stopwatch.Stop(),
+			),
+		),
+	)
+
 	count := 0
 	for m := range rabbitmq.RabbitMQContext(ctx, rmq) {
 		count++
 		if count == 10 {
 			break
 		}
-		slog.Debug("message received", "value", format.ToPrettyJSON(m))
+		value, err := chain(&m)
+		if err != nil {
+			slog.Error("error applying chain to message", "error", err)
+		} else {
+			slog.Debug("AMQP091 message received", "value", format.ToPrettyJSON(m))
+			fmt.Printf("AMQP delivery: %s\n", format.ToPrettyJSON(m))
+			fmt.Printf("AMQP message: %s\n", value)
+		}
 	}
 
 	/*

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
@@ -72,7 +73,7 @@ func doCountSpecificEventTypes(args []string, acceptedEvents ...string) error {
 	return nil
 }
 
-func doRecordSpecificEventTypesWithFormat(args []string, format string, acceptedEvents ...string) error {
+func doRecordSpecificEventTypesWithFormat(args []string, format string, filter func(n notification.Notification) bool) error {
 
 	ctx := context.Background()
 
@@ -89,17 +90,11 @@ func doRecordSpecificEventTypesWithFormat(args []string, format string, accepted
 					Then(
 						notification.OsloToNotification(false),
 						Then(
-							transformers.AcceptIf(func(n notification.Notification) bool {
-								return slices.Contains(acceptedEvents, n.Summary().EventType)
-							}),
+							transformers.AcceptIf(filter),
 							Then(
 								transformers.Format[notification.Notification](format),
 								Then(
-									transformers.Record[string](
-										os.Stdout,
-										"",
-										true,
-									),
+									transformers.Write[string](os.Stdout, true),
 									stopwatch.Stop(),
 								),
 							),
@@ -169,6 +164,45 @@ func doEventTypesStats(args []string) error {
 		subcount = subcount + v
 	}
 	fmt.Printf("  %-50s: %d\n", "others", total-subcount)
+
+	return nil
+}
+
+func printEventsAsYAML(args []string, filter func(n notification.Notification) bool) error {
+
+	ctx := context.Background()
+	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
+	chain := Apply(
+		stopwatch.Start(),
+		Then(
+			transformers.StringToByteArray(),
+			Then(
+				amqp.JSONToMessage(),
+				Then(
+					oslo.MessageToOslo(false),
+					Then(
+						notification.OsloToNotification(false),
+						Then(
+							transformers.AcceptIf(filter),
+							stopwatch.Stop(),
+						),
+					),
+				),
+			),
+		),
+	)
+
+	for line := range file.LinesContext(ctx, args...) {
+		if value, err := chain(line); err != nil {
+			slog.Error("error processing line", "line", line)
+		} else {
+			slog.Info("processed line", "line", line, "output", value)
+			fmt.Println("# --------------------------------------------------------------------------------")
+			fmt.Printf("%s", format.ToYAML(value))
+		}
+	}
+	fmt.Println("# --------------------------------------------------------------------------------")
+	os.Stdout.Sync()
 
 	return nil
 }

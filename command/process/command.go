@@ -2,17 +2,15 @@ package process
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"slices"
 
-	"github.com/dihedron/rawdata"
 	"github.com/dihedron/snoop/command/base"
 	"github.com/dihedron/snoop/generator/file"
-	"github.com/dihedron/snoop/generator/rabbitmq"
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
@@ -109,18 +107,19 @@ func (cmd *Process) Execute(args []string) error {
 
 	if cmd.DryRun {
 		slog.Info("running in dry-run mode")
-		syslog := &transformers.SysLogWriter{}
+		//syslog := &transformers.SysLogWriter{}
+	}
 
 	if cmd.Playback {
 		slog.Debug("playing back messages from recording...", "files", args)
 
 		ctx := context.Background()
-		stopwatch := &transformers.StopWatch[string, string]{}
-		multicounter := &transformers.MultiCounter[notification.Notification, string]{}
+		stopwatch := &transformers.StopWatch[string, notification.Notification]{}
+		//multicounter := &transformers.MultiCounter[notification.Notification, string]{}
 
-		acceptedEvents := []string{"compute.instance.shutdown.end", "compute.instance.shutdown.start"}
+		//acceptedEvents := []string{"compute.instance.shutdown.end", "compute.instance.shutdown.start"}
 
-		chain := Apply(
+		unwrap := Apply(
 			stopwatch.Start(),
 			Then(
 				transformers.StringToByteArray(),
@@ -130,25 +129,7 @@ func (cmd *Process) Execute(args []string) error {
 						oslo.MessageToOslo(false),
 						Then(
 							notification.OsloToNotification(false),
-							Then(
-								multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
-								Then(
-									transformers.AcceptIf(func(n notification.Notification) bool {
-										return slices.Contains(acceptedEvents, n.Summary().EventType)
-									}),
-									Then(
-										transformers.Format[notification.Notification](format),
-										Then(
-											transformers.Record[string](
-												os.Stdout,
-												"",
-												true,
-											),
-											stopwatch.Stop(),
-										),
-									),
-								),
-							),
+							stopwatch.Stop(),
 						),
 					),
 				),
@@ -156,20 +137,43 @@ func (cmd *Process) Execute(args []string) error {
 		)
 
 		for line := range file.LinesContext(ctx, args...) {
-			if value, err := chain(line); err != nil {
-				slog.Error("error processing line", "line", line)
+			if notification, err := unwrap(line); err != nil {
+				slog.Error("error unwrapping line", "line", line)
 			} else {
-				slog.Info("processed line", "line", line, "output", value)
+				slog.Info("unwrapped line", "line", line, "output", notification, "elapsed", stopwatch.Elapsed())
 			}
+
+			// switch notification.Base.EventType {
+			// case "compute.instance.exists":
+			// }
+			// Then(
+			// 	multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
+			// 	Then(
+			// 		transformers.AcceptIf(func(n notification.Notification) bool {
+			// 			return slices.Contains(acceptedEvents, n.Summary().EventType)
+			// 		}),
+			// 		Then(
+			// 			transformers.Format[notification.Notification](format),
+			// 			Then(
+			// 				transformers.Record[string](
+			// 					os.Stdout,
+			// 					"",
+			// 					true,
+			// 				),
+			// 				stopwatch.Stop(),
+			// 			),
+			// 		),
+			// 	),
+			// ),
+
 		}
 		os.Stdout.Sync()
 
-	} else {
-		slog.Info("processing messages from RabbitMQ")
-		rmq := &rabbitmq.RabbitMQ{}
-		rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
-		slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToPrettyJSON(rmq))
-
+		// } else {
+		// 	slog.Info("processing messages from RabbitMQ")
+		// 	rmq := &rabbitmq.RabbitMQ{}
+		// 	rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
+		// 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToPrettyJSON(rmq))
 	}
 
 	/*
@@ -278,70 +282,3 @@ func (cmd *Process) Execute(args []string) error {
 	*/
 	return nil
 }
-
-// // Execute is the real implementation of the Record command.
-// func (cmd *Record) Execute_Ingestor(args []string) error {
-// 	slog.Debug("draining and recording messages from RabbitMQ")
-
-// 	// read configuration
-// 	cfg, err := helpers.LoadConfiguration(cmd.Configuration)
-// 	if err != nil {
-// 		slog.Errorf("error loading configuration from %q", cmd.Configuration)
-// 		return err
-// 	}
-// 	slog.Info("configuration successfully loaded")
-
-// 	// open the output stream
-// 	stream, err := helpers.OpenOutputStream(cmd.Output, cmd.Truncate)
-// 	if err != nil {
-// 		slog.Errorf("error opening output stream: %s", cmd.Output)
-// 		return err
-// 	}
-// 	defer (stream.(io.WriteCloser)).Close()
-// 	slog.Info("output stream successfully opened")
-
-// 	ingestor, err := helpers.NewRabbitMQIngestor(cfg.RabbitMQ.Servers, cfg.RabbitMQ.Bindings, cfg.RabbitMQ.Queue, cfg.RabbitMQ.Client)
-
-// 	if err != nil {
-// 		slog.Error("error creating new RabbitMQ ingestor")
-// 		return err
-// 	}
-// 	slog.Info("input ingestor successfully opened")
-
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-
-// 	// open the RabbitMQ channel
-// 	deliveries, err := ingestor.Ingest(ctx)
-// 	if err != nil {
-// 		slog.Error("error opening queue to RabbitMQ server")
-// 		return err
-// 	}
-// 	slog.Info("RabbitMQ channes ready for processing")
-
-// 	// get ready to handle signals (CTRL+C etc.) from user
-// 	signals := make(chan os.Signal, 1)
-// 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-// 	defer close(signals)
-
-// loop:
-// 	for {
-// 		select {
-// 		case sig := <-signals:
-// 			fmt.Printf("signal received: %v\n", sig)
-// 			break loop
-// 		case delivery := <-deliveries:
-// 			if delivery, ok := delivery.(amqp.Delivery); ok {
-// 				amqpMsg, err := message.NewAMQPDelivery(&delivery)
-// 				if err != nil {
-// 					slog.Error("error reading AMQP message")
-// 					delivery.Ack(false)
-// 					continue
-// 				}
-// 				fmt.Fprintf(stream, "%v\n", amqpMsg)
-// 				delivery.Ack(true)
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
