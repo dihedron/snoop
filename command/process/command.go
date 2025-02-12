@@ -41,12 +41,12 @@ type Process struct {
 	// has no side effects, i.e. it simulates processing without actually writing
 	// events to syslog and acknowledging incoming messages to RabbitMQ.
 	DryRun bool `short:"d" long:"dry-run" description:"Whether to perform a dry run, i.e. simulating processing with no side effects." optional:"yes"`
-	// Configuration contains the path to the (optional) configuration file to use; if
-	// no value is provided (neither on the command line nor in the environment via the
-	// SNOOP_CONFIGURATION variable), the application will look for a viable configuration
-	// file named .snoop.[yaml|json] under a few well-known paths: /etc, the current
-	// directory etc.
-	Configuration *string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes" env:"SNOOP_CONFIGURATION"`
+	// // Configuration contains the path to the (optional) configuration file to use; if
+	// // no value is provided (neither on the command line nor in the environment via the
+	// // SNOOP_CONFIGURATION variable), the application will look for a viable configuration
+	// // file named .snoop.[yaml|json] under a few well-known paths: /etc, the current
+	// // directory etc.
+	// Configuration *string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes" env:"SNOOP_CONFIGURATION"`
 }
 
 // Embed the file content as string.
