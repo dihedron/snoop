@@ -61,7 +61,8 @@ func (cmd *Playback) Execute(args []string) error {
 		),
 	)
 
-	for line := range file.LinesContext(ctx, args...) {
+	files := file.New()
+	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := chain(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {

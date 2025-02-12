@@ -1,6 +1,6 @@
 module github.com/dihedron/snoop
 
-go 1.23.4
+go 1.24.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -11,7 +11,6 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/juju/rfc/v2 v2.0.0
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/neilotoole/slogt v1.1.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/schollz/progressbar/v3 v3.18.0

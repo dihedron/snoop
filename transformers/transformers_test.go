@@ -124,7 +124,9 @@ func TestFileChain(t *testing.T) {
 			),
 		),
 	)
-	for value := range file.Lines("../generator/file/test.txt") {
+
+	files := file.New()
+	for value := range files.AllLines("../generator/file/test.txt") {
 		if _, err := transform(value); err != nil || counter.Count() >= 10 {
 			break
 		}
@@ -237,7 +239,8 @@ func TestCacheFromFile(t *testing.T) {
 			),
 		),
 	)
-	for value := range file.Lines("../generator/file/test.txt") {
+	files := file.New()
+	for value := range files.AllLines("../generator/file/test.txt") {
 		if _, err := transform(value); err != nil || counter.Count() >= 10 {
 			break
 		}
@@ -273,7 +276,9 @@ func TestMultipleCacheFromMultipleFiles(t *testing.T) {
 			),
 		),
 	)
-	for value := range concat.Concat(file.Lines("../generator/file/test.txt"), file.Lines("../generator/file/test.txt")) {
+
+	files := file.New()
+	for value := range concat.Concat(files.AllLines("../generator/file/test.txt"), files.AllLines("../generator/file/test.txt")) {
 		if _, err := transform(value); err != nil {
 			break
 		}

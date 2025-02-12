@@ -13,7 +13,8 @@ import (
 
 func TestConcatGenerator(t *testing.T) {
 	test.Setup(t)
-	for n := range Concat(file.Lines("../file/a2m.txt"), file.Lines("../file/n2z.txt")) {
+	files := file.New()
+	for n := range Concat(files.AllLines("../file/a2m.txt"), files.AllLines("../file/n2z.txt")) {
 		slog.Info("received item", "value", n)
 	}
 }

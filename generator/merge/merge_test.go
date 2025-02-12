@@ -26,7 +26,8 @@ func TestMergeContextGenerator(t *testing.T) {
 	func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
-		for value := range Merge(ctx, file.LinesContext(ctx, "../file/a2m.txt"), file.LinesContext(ctx, "../file/n2z.txt")) {
+		files := file.New()
+		for value := range Merge(ctx, files.AllLinesContext(ctx, "../file/a2m.txt"), files.AllLinesContext(ctx, "../file/n2z.txt")) {
 			slog.Debug("received item", "value", value)
 			time.Sleep(10 * time.Millisecond)
 		}

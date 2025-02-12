@@ -136,7 +136,8 @@ func (cmd *Process) Execute(args []string) error {
 			),
 		)
 
-		for line := range file.LinesContext(ctx, args...) {
+		files := file.New()
+		for line := range files.AllLinesContext(ctx, args...) {
 			if notification, err := unwrap(line); err != nil {
 				slog.Error("error unwrapping line", "line", line)
 			} else {

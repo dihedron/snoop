@@ -52,7 +52,8 @@ func doCountSpecificEventTypes(args []string, acceptedEvents ...string) error {
 		),
 	)
 
-	for line := range file.LinesContext(ctx, args...) {
+	files := file.New()
+	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := chain(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
@@ -105,7 +106,8 @@ func doRecordSpecificEventTypesWithFormat(args []string, format string, filter f
 		),
 	)
 
-	for line := range file.LinesContext(ctx, args...) {
+	files := file.New()
+	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := chain(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
@@ -147,7 +149,8 @@ func doEventTypesStats(args []string) error {
 		),
 	)
 
-	for line := range file.LinesContext(ctx, args...) {
+	files := file.New()
+	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := chain(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
@@ -192,7 +195,8 @@ func printEventsAsYAML(args []string, filter func(n notification.Notification) b
 		),
 	)
 
-	for line := range file.LinesContext(ctx, args...) {
+	files := file.New()
+	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := chain(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
