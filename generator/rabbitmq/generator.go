@@ -39,7 +39,7 @@ type RabbitMQ struct {
 	// Client contains info about the RabbitMQ client.
 	Client Client `json:"client" yaml:"client" validate:"required"`
 	// Servers is the set of RabbitMQ servers in the cluster to connect to.
-	Servers []Server `json:"servers" yaml:"servers" validate:"required"`
+	Servers []Server `json:"servers" yaml:"servers" validate:"required,dive,required"`
 	// Queue is the queue to use.
 	Queue Queue `json:"queue" yaml:"queue" validate:"required"`
 	// Bindings is the set of bindings to establish the RabbitMQ topology.
