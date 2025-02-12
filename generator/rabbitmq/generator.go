@@ -147,7 +147,7 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 	}
 }
 
-func (r *RabbitMQ) Error() error {
+func (r *RabbitMQ) Err() error {
 	return r.err
 }
 

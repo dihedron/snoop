@@ -31,7 +31,7 @@ func TestRabbitMQContext(t *testing.T) {
 		}
 		slog.Debug("message received", "value", format.ToPrettyJSON(m))
 	}
-	if err := rmq.Error(); err != nil {
+	if err := rmq.Err(); err != nil {
 		slog.Error("error iterating over RabbitMQ messages", "error", err)
 	}
 }
