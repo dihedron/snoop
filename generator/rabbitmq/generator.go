@@ -7,6 +7,7 @@ import (
 	"iter"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -55,9 +56,6 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 		slog.Debug("no context provided, allocating default context...")
 		ctx = context.Background()
 	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
 
 	if err := r.validate(); err != nil {
 		slog.Error("invalid configuration", "error", err)
@@ -140,15 +138,67 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 		}
 		slog.Info("RabbitMQ client ready to drain messages")
 
-		queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
-			slog.Debug("sending amqp091.Delivery as message", "value", message)
-			if !yield(message) {
-				slog.Info("stop sending messages")
-				cancel()
-				return nil
+		experimental := true
+		if experimental {
+			slog.Debug("EXPERIMENTAL: retrieving events with an interposed channel")
+
+			values := make(chan amqp091.Delivery, 10)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
+					slog.Debug("enqueuing amqp091.Delivery as message", "value", message)
+					select {
+					case values <- message:
+						slog.Debug("message enqueued")
+					case <-ctx.Done():
+						slog.Debug("context cancelled, no more enqueuing and exiting")
+					default:
+						slog.Debug("cannot enqueue message")
+					}
+					return nil
+				}, rabbit.DefaultAckPolicy())
+				close(values)
+				wg.Done()
+			}()
+		loop:
+			for {
+				select {
+				case message, ok := <-values:
+					if !ok || !yield(message) {
+						slog.Info("stop generating messages for iterator")
+						break loop
+					}
+				case <-ctx.Done():
+					slog.Info("context done")
+					break loop
+				}
 			}
-			return nil
-		}, rabbit.DefaultAckPolicy())
+			slog.Debug("waiting for queue consumer to exit...")
+			wg.Wait()
+			slog.Debug("queue consumer exited")
+		} else {
+			// TODO: this one seems to work best
+			slog.Debug("retrieving events without an interposed channel")
+			queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
+				slog.Debug("sending amqp091.Delivery as message", "value", message)
+				if !yield(message) {
+					slog.Info("stop sending messages (cancel context)")
+					// TODO: check if thins works in a highly concurrent context
+					// where the select() within consume() might not read from
+					// the cancel channel and read some more messages from the
+					// RabbitMQ input queue; in that case, this will panic. It might
+					// be necessary to:
+					// 1. implement a queue that sends messages from this inner func
+					//    to the iterator
+					// 2. have the iterator dequeue messages, check if the yield() func
+					//    return false, signal this func() that it's over and exit immediately
+					cancel()
+					return nil
+				}
+				return nil
+			}, rabbit.DefaultAckPolicy())
+		}
 	}
 }
 
