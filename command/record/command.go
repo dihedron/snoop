@@ -83,7 +83,7 @@ func (cmd *Record) Execute(args []string) error {
 			fmt.Printf("AMQP message: %s\n", value)
 		}
 	}
-	if err := rmq.Error(); err != nil {
+	if err := rmq.Err(); err != nil {
 		slog.Error("error connecting to RabbitMQ", "error", err)
 	}
 

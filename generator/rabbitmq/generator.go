@@ -55,6 +55,10 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 		slog.Debug("no context provided, allocating default context...")
 		ctx = context.Background()
 	}
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+
 	if err := r.validate(); err != nil {
 		slog.Error("invalid configuration", "error", err)
 		r.err = err
@@ -140,6 +144,7 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 			slog.Debug("sending amqp091.Delivery as message", "value", message)
 			if !yield(message) {
 				slog.Info("stop sending messages")
+				cancel()
 				return nil
 			}
 			return nil

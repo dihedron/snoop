@@ -79,7 +79,7 @@ func (cmd *Check) Execute(args []string) error {
 			break
 		}
 	}
-	if err := rmq.Error(); err != nil {
+	if err := rmq.Err(); err != nil {
 		slog.Error("error connecting to RabbitMQ", "error", err)
 		return err
 	}

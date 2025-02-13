@@ -213,7 +213,7 @@ func JSONToNotification() func(string) (Notification, error) {
 			slog.Debug("parsing binding message", "event type", tokens[1])
 			notification = &Binding{}
 		case
-			"identity.authenticate",
+			"identity.authenticate", // failed -> send to SIEM
 			"identity.user.created",
 			"identity.user.updated",
 			"identity.user.deleted",
