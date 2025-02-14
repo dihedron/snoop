@@ -8,12 +8,15 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/dihedron/snoop/command/base"
 	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
+
+	//lint:ignore ST1001 we want to use the API in a fluent way with no clutter
 	. "github.com/dihedron/snoop/transform"
 	"github.com/dihedron/snoop/transformers"
 )
@@ -41,22 +44,15 @@ type Process struct {
 	// has no side effects, i.e. it simulates processing without actually writing
 	// events to syslog and acknowledging incoming messages to RabbitMQ.
 	DryRun bool `short:"d" long:"dry-run" description:"Whether to perform a dry run, i.e. simulating processing with no side effects." optional:"yes"`
-	// // Configuration contains the path to the (optional) configuration file to use; if
-	// // no value is provided (neither on the command line nor in the environment via the
-	// // SNOOP_CONFIGURATION variable), the application will look for a viable configuration
-	// // file named .snoop.[yaml|json] under a few well-known paths: /etc, the current
-	// // directory etc.
-	// Configuration *string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes" env:"SNOOP_CONFIGURATION"`
 }
-
-// Embed the file content as string.
-//
-//go:embed compute.instance.tmpl
-var format string
 
 // Execute is the real implementation of the Record command.
 func (cmd *Process) Execute(args []string) error {
+	var err error
+
+	//
 	// validate command line flags first
+	//
 	if cmd.Playback {
 		// running from file, so the input files are mandatory
 		if len(args) == 0 {
@@ -74,10 +70,15 @@ func (cmd *Process) Execute(args []string) error {
 			return errors.New("no configuration file provided")
 		}
 	}
+
+	//
+	// prepare the writer
+	//
 	var writer io.Writer = io.Discard
 	if cmd.Record != nil {
 		switch *cmd.Record {
 		case "":
+			// this should never happen
 			slog.Error("no output file provided")
 			return errors.New("no output file provided")
 		case "-":
@@ -102,81 +103,24 @@ func (cmd *Process) Execute(args []string) error {
 			writer = file
 		}
 	}
-
 	slog.Debug("writer is ready", "type", fmt.Sprintf("%T", writer))
 
+	//
+	// if dry run, do not output to syslog nor ack the messages
+	//
 	if cmd.DryRun {
 		slog.Info("running in dry-run mode")
 		//syslog := &transformers.SysLogWriter{}
 	}
 
+	//
+	// if in playback mode, retrieve the messages from file
+	//
 	if cmd.Playback {
-		slog.Debug("playing back messages from recording...", "files", args)
-
-		ctx := context.Background()
-		stopwatch := &transformers.StopWatch[string, notification.Notification]{}
-		//multicounter := &transformers.MultiCounter[notification.Notification, string]{}
-
-		//acceptedEvents := []string{"compute.instance.shutdown.end", "compute.instance.shutdown.start"}
-
-		unwrap := Apply(
-			stopwatch.Start(),
-			Then(
-				transformers.StringToByteArray(),
-				Then(
-					amqp.JSONToMessage(),
-					Then(
-						oslo.MessageToOslo(false),
-						Then(
-							notification.OsloToNotification(false),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		)
-
-		files := file.New()
-		for line := range files.AllLinesContext(ctx, args...) {
-			if notification, err := unwrap(line); err != nil {
-				slog.Error("error unwrapping line", "line", line)
-			} else {
-				slog.Info("unwrapped line", "line", line, "output", notification, "elapsed", stopwatch.Elapsed())
-			}
-
-			// switch notification.Base.EventType {
-			// case "compute.instance.exists":
-			// }
-			// Then(
-			// 	multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
-			// 	Then(
-			// 		transformers.AcceptIf(func(n notification.Notification) bool {
-			// 			return slices.Contains(acceptedEvents, n.Summary().EventType)
-			// 		}),
-			// 		Then(
-			// 			transformers.Format[notification.Notification](format),
-			// 			Then(
-			// 				transformers.Record[string](
-			// 					os.Stdout,
-			// 					"",
-			// 					true,
-			// 				),
-			// 				stopwatch.Stop(),
-			// 			),
-			// 		),
-			// 	),
-			// ),
-
-		}
-		os.Stdout.Sync()
-
-		// } else {
-		// 	slog.Info("processing messages from RabbitMQ")
-		// 	rmq := &rabbitmq.RabbitMQ{}
-		// 	rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
-		// 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToPrettyJSON(rmq))
+		err = cmd.processFromFile(args)
+	} else {
+		err = cmd.processFromRabbitMQ()
 	}
-
 	/*
 			// read configuration
 			cfg, err := helpers.LoadConfiguration(cmd.Configuration)
@@ -281,5 +225,82 @@ func (cmd *Process) Execute(args []string) error {
 			}
 			slog.Infof("record command complete: %d messages recorded", counter.Count())
 	*/
+	return err
+}
+
+func (cmd *Process) processFromFile(args []string) error {
+	var err error
+
+	slog.Debug("playing back messages from recordings...", "files", args)
+
+	ctx := context.Background()
+	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
+	multicounter := &transformers.MultiCounter[notification.Notification, string]{}
+
+	//acceptedEvents := []string{"compute.instance.shutdown.end", "compute.instance.shutdown.start"}
+
+	unwrap := Apply(
+		stopwatch.Start(),
+		Then(
+			transformers.StringToByteArray(),
+			Then(
+				amqp.JSONToMessage(),
+				Then(
+					oslo.MessageToOslo(false),
+					Then(
+						notification.OsloToNotification(false),
+						Then(
+							multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
+							stopwatch.Stop(),
+						),
+					),
+				),
+			),
+		),
+	)
+
+	files := file.New()
+	for line := range files.AllLinesContext(ctx, args...) {
+		var n notification.Notification
+
+		if n, err = unwrap(line); err != nil {
+			slog.Error("error unwrapping line", "line", line, "error", err)
+			continue
+		}
+		slog.Info("unwrapped line", "line", line, "output", n, "elapsed", stopwatch.Elapsed())
+
+		err = cmd.processNotification(n)
+		if err != nil {
+			slog.Error("error processing notification", "error", err)
+		}
+	}
+
+	stats, _ := multicounter.Count()
+	cmd.PrintStatistics(stats)
+	os.Stdout.Sync()
+	return nil
+}
+
+func (cmd *Process) processFromRabbitMQ() error {
+	// TODO
+	return nil
+}
+
+func (cmd *Process) processNotification(_ notification.Notification) error {
+	// TODO
+	return nil
+}
+
+func (cmd *Process) PrintStatistics(stats map[string]int64) error {
+	keys := make([]string, len(stats))
+	i := 0
+	for k := range stats {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("%-50s: %d\n", k, stats[k])
+	}
 	return nil
 }
