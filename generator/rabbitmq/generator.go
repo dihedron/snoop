@@ -35,6 +35,11 @@ const (
 	DefaultQosPrefetchSize = 0
 )
 
+var (
+	// ErrNoMoreMessages is returned when the RabbitMQ queue has no
+	ErrNoMoreMessages = errors.New("no more messages from RabbitMQ")
+)
+
 // RabbitMQ contains all information about RabbitMQ connection and topology.
 type RabbitMQ struct {
 	// Client contains info about the RabbitMQ client.
@@ -49,6 +54,20 @@ type RabbitMQ struct {
 	err error
 }
 
+// Err returns the error produced during the execution (if any).
+func (r *RabbitMQ) Err() error {
+	return r.err
+}
+
+// Reset resets the internal state so the generator can be reused.
+func (r *RabbitMQ) Reset() {
+	r.err = nil
+}
+
+// All connects to the servers and exchanges in the configuration and returns
+// an iterator that can be used inside a range loop; if an error occurs, or
+// the context is cancelled, the iterator stops yielding values to the range
+// loop and the Err() method can be used to retrieve the error.
 func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 	slog.Debug("starting to collect messages from RabbitMQ")
 	r.err = nil
@@ -57,7 +76,7 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 		ctx = context.Background()
 	}
 
-	if err := r.validate(); err != nil {
+	if err := r.Validate(); err != nil {
 		slog.Error("invalid configuration", "error", err)
 		r.err = err
 		return nil
@@ -97,14 +116,7 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 			})
 		}
 
-		slog.Info(
-			"binding to queue",
-			"name", r.Queue.Name,
-			"declare", r.Queue.Declare,
-			"durable", r.Queue.Durable,
-			"exclusive", r.Queue.Exclusive,
-			"autodelete", r.Queue.AutoDelete,
-		)
+		slog.Info("binding to queue", "name", r.Queue.Name, "declare", r.Queue.Declare, "durable", r.Queue.Durable, "exclusive", r.Queue.Exclusive, "autodelete", r.Queue.AutoDelete)
 
 		options := &rabbit.Options{
 			URLs:              urls,
@@ -138,75 +150,121 @@ func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
 		}
 		slog.Info("RabbitMQ client ready to drain messages")
 
+		//
+		// EXPERIMENT START
+		//
 		experimental := true
 		if experimental {
-			slog.Debug("EXPERIMENTAL: retrieving events with an interposed channel")
-
-			values := make(chan amqp091.Delivery, 10)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
-					slog.Debug("enqueuing amqp091.Delivery as message", "value", message)
+			func() {
+				slog.Debug("EXPERIMENTAL: retrieving events with an interposed channel")
+				ctx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				values := make(chan amqp091.Delivery)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go func() {
+					slog.Debug("inner producer: started")
+					defer func() {
+						close(values)
+						wg.Done()
+						slog.Debug("inner producer: complete")
+					}()
+					queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
+						//slog.Debug("enqueuing amqp091.Delivery as message", "value", message)
+						message.Nack(true, true)
+						slog.Debug("inner producer: message available for enqueuing")
+						select {
+						case values <- message:
+							slog.Debug("inner producer: message enqueued")
+						case <-ctx.Done():
+							slog.Debug("inner producer: context cancelled, exiting")
+							return nil
+						}
+						return nil
+					}, rabbit.DefaultAckPolicy())
+				}()
+			loop:
+				for {
 					select {
-					case values <- message:
-						slog.Debug("message enqueued")
+					case message, ok := <-values:
+						if !ok {
+							slog.Debug("inner consumer: message queue is closed")
+							//cancel()
+							r.err = nil
+							break loop
+						}
+						slog.Debug("inner consumer: yielding dequeued message")
+						if yield(message) {
+							slog.Debug("inner consumer: message processed, continuing...")
+						} else {
+							slog.Debug("inner consumer: range loop broke out (cancelling context)")
+							cancel()
+							r.err = nil
+							break loop
+						}
 					case <-ctx.Done():
-						slog.Debug("context cancelled, no more enqueuing and exiting")
-					default:
-						slog.Debug("cannot enqueue message")
-					}
-					return nil
-				}, rabbit.DefaultAckPolicy())
-				close(values)
-				wg.Done()
-			}()
-		loop:
-			for {
-				select {
-				case message, ok := <-values:
-					if !ok || !yield(message) {
-						slog.Info("stop generating messages for iterator")
+						slog.Info("inner consumer: context done")
+						r.err = nil
 						break loop
 					}
-				case <-ctx.Done():
-					slog.Info("context done")
-					break loop
 				}
-			}
-			slog.Debug("waiting for queue consumer to exit...")
-			wg.Wait()
-			slog.Debug("queue consumer exited")
+				slog.Debug("inner consumer: waiting for inner producer to exit...")
+				wg.Wait()
+				slog.Debug("inner consumer: inner producer exited")
+			}()
 		} else {
-			// TODO: this one seems to work best
-			slog.Debug("retrieving events without an interposed channel")
-			queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
-				slog.Debug("sending amqp091.Delivery as message", "value", message)
-				if !yield(message) {
-					slog.Info("stop sending messages (cancel context)")
-					// TODO: check if thins works in a highly concurrent context
-					// where the select() within consume() might not read from
-					// the cancel channel and read some more messages from the
-					// RabbitMQ input queue; in that case, this will panic. It might
-					// be necessary to:
-					// 1. implement a queue that sends messages from this inner func
-					//    to the iterator
-					// 2. have the iterator dequeue messages, check if the yield() func
-					//    return false, signal this func() that it's over and exit immediately
-					cancel()
+			func() {
+				ctx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				slog.Debug("retrieving events without an interposed channel")
+				// queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
+				// 	//slog.Debug("message ready to consume", "value", message)
+				// 	slog.Debug("generator: message ready to consume")
+				// 	if !yield(message) {
+				// 		slog.Info("generator: stop sending messages (cancel context)")
+				// 		// TODO: check if thins works in a highly concurrent context
+				// 		// where the select() within consume() might not read from
+				// 		// the cancel channel and read some more messages from the
+				// 		// RabbitMQ input queue; in that case, this will panic. It might
+				// 		// be necessary to:
+				// 		// 1. implement a queue that sends messages from this inner func
+				// 		//    to the iterator
+				// 		// 2. have the iterator dequeue messages, check if the yield() func
+				// 		//    return false, signal this func() that it's over and exit immediately
+				// 		cancel()
+				// 		return nil
+				// 	}
+				// 	slog.Info("generator: message accepted from range loop")
+				// 	return nil
+				// }, rabbit.DefaultAckPolicy())
+				queue.ConsumeOnce(ctx, func(message amqp091.Delivery) error {
+					//slog.Debug("message ready to consume", "value", message)
+					slog.Debug("generator: message ready to consume")
+					if !yield(message) {
+						slog.Info("generator: stop sending messages (cancel context)")
+						// TODO: check if thins works in a highly concurrent context
+						// where the select() within consume() might not read from
+						// the cancel channel and read some more messages from the
+						// RabbitMQ input queue; in that case, this will panic. It might
+						// be necessary to:
+						// 1. implement a queue that sends messages from this inner func
+						//    to the iterator
+						// 2. have the iterator dequeue messages, check if the yield() func
+						//    return false, signal this func() that it's over and exit immediately
+						cancel()
+						return nil
+					}
+					slog.Info("generator: message accepted from range loop")
 					return nil
-				}
-				return nil
-			}, rabbit.DefaultAckPolicy())
+				}, rabbit.DefaultAckPolicy())
+
+			}()
 		}
 	}
 }
 
-func (r *RabbitMQ) Err() error {
-	return r.err
-}
-
-func (r *RabbitMQ) validate() error {
+// Validate validates the configuration
+func (r *RabbitMQ) Validate() error {
 	validate := validator.New()
 	return validate.Struct(*r)
 }

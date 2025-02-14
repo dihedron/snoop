@@ -46,5 +46,5 @@ func TestRabbitMQConfigurationAndValidation(t *testing.T) {
 	rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
 
-	rmq.validate()
+	rmq.Validate()
 }

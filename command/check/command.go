@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/dihedron/rawdata"
 	"github.com/dihedron/snoop/command/base"
@@ -20,11 +19,9 @@ import (
 // in the given configuration.
 type Check struct {
 	base.ConfiguredCommand
-	// DrainCount represents the number of messages to drain from the
-	// RabbitMQ source in order to test if things actually work; it will
-	// not acknowledge any message which will therefore be re-delivered.
-	DrainCount int `short:"d" long:"drain-count" description:"The number of messages to drain for testing purposes." optional:"yes" default:"1" validate:"gte=1"`
 }
+
+const MaxMessages = 1
 
 // Execute is the real implementation of the Check command.
 func (cmd *Check) Execute(args []string) error {
@@ -54,35 +51,45 @@ func (cmd *Check) Execute(args []string) error {
 	}
 
 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
-
 	fmt.Printf("%s:\n%s", color.YellowString("configuration"), color.BlueString(format.ToYAML(rmq)))
 
-	// options := rmq.ToOptions()
-	// slog.Debug("RabbitMQ options in JSON format", "options", format.ToJSON(options))
+	// check if servers can be contacted, one at a time
+	servers := rmq.Servers
+	var result error = nil
+	for _, server := range servers {
 
-	// fmt.Printf("%s:\n%s", color.YellowString("options"), color.BlueString(format.ToYAML(options)))
+		func() {
+			fmt.Printf("connecting to server %s on port %s:", color.YellowString(server.Address), color.YellowString(fmt.Sprintf("%d", server.Port)))
 
-	// now prepare the processing chain
-	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
-	defer cancel()
+			// overwrite the address of the serves in the configuration
+			// with the single one under test now
+			rmq.Servers = []rabbitmq.Server{server}
+			rmq.Reset()
 
-	if cmd.DrainCount <= 0 {
-		cmd.DrainCount = 1
+			// now prepare the processing chain
+			slog.Debug("initialising context...")
+			ctx := context.Background()
+
+			count := 0
+			for m := range rmq.All(ctx) {
+				fmt.Printf(" %s", color.GreenString(" ✔"))
+				m.Nack(true, true)
+				//slog.Debug("message received", "value", format.ToPrettyJSON(m))
+				slog.Debug("range loop: message received")
+				count++
+				if count >= MaxMessages {
+					slog.Debug("range loop: maximum count of messages, breaking from loop")
+					break
+				}
+			}
+			if err := rmq.Err(); err != nil {
+				slog.Error("error from iterator", "error", err)
+				fmt.Printf(" %s (%s)", color.RedString("✘"), err.Error())
+				result = errors.Join(result, fmt.Errorf("error connecting to %s: %w", server.Address, err))
+			}
+			fmt.Println()
+		}()
 	}
-	fmt.Printf("%s %s...\n", color.YellowString("connecting to"), color.RedString("servers"))
-	count := 0
-	for m := range rmq.All(ctx) {
-		fmt.Printf("%s...\n", color.GreenString("retrieved message"))
-		slog.Debug("message received", "value", format.ToPrettyJSON(m))
-		count++
-		if count >= cmd.DrainCount {
-			break
-		}
-	}
-	if err := rmq.Err(); err != nil {
-		slog.Error("error connecting to RabbitMQ", "error", err)
-		return err
-	}
 
-	return nil
+	return result
 }
