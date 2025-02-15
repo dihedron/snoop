@@ -4,12 +4,12 @@ import (
 	"errors"
 
 	"github.com/dihedron/snoop/syslog"
-	"github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
 // Accept accepts the value if the condition is true. This
 // filter does not affect the value flowing through.
-func WriteToSyslog[T any](syslog *syslog.Syslog, accept func(value T) bool) transform.F[T] {
+func WriteToSyslog[T any](syslog *syslog.Syslog, accept func(value T) bool) chain.F[T] {
 	return func(value T) (T, error) {
 		// if accept(value) {
 		// 	slog.Debug("logging message for inclusion into syslog...", "type", format.TypeAsString(value))

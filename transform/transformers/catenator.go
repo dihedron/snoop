@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
 // Catenator accumulates the values flowing through the transformer
@@ -18,7 +18,7 @@ type Catenator[T any] struct {
 // Add adds the value flowing into the transformer to an internal
 // buffer after converting it to a string (using fmt.Sprintf("%v")).
 // This filter does not affect the value flowing through.
-func (c *Catenator[T]) Add() transform.X[T, T] {
+func (c *Catenator[T]) Add() chain.X[T, T] {
 	return func(value T) (T, error) {
 		c.values = append(c.values, fmt.Sprintf("%v", value))
 		return value, nil

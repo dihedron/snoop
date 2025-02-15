@@ -13,8 +13,8 @@ import (
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
-	. "github.com/dihedron/snoop/transform"
-	"github.com/dihedron/snoop/transformers"
+	"github.com/dihedron/snoop/transform/chain"
+	"github.com/dihedron/snoop/transform/transformers"
 )
 
 func doCountSpecificEventTypes(args []string, acceptedEvents ...string) error {
@@ -25,36 +25,26 @@ func doCountSpecificEventTypes(args []string, acceptedEvents ...string) error {
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
 	multicounter := &transformers.MultiCounter[notification.Notification, string]{}
 
-	chain := Apply(
+	xform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			transformers.StringToByteArray(),
-			Then(
-				amqp.JSONToMessage(),
-				Then(
-					oslo.MessageToOslo(false),
-					Then(
-						notification.OsloToNotification(false),
-						Then(
-							multicounter.AddIf(
-								func(n notification.Notification) string {
-									return n.Summary().EventType
-								},
-								func(n notification.Notification) bool {
-									return slices.Contains(acceptedEvents, n.Summary().EventType)
-								},
-							),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		multicounter.AddIf(
+			func(n notification.Notification) string {
+				return n.Summary().EventType
+			},
+			func(n notification.Notification) bool {
+				return slices.Contains(acceptedEvents, n.Summary().EventType)
+			},
 		),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()
 	for line := range files.AllLinesContext(ctx, args...) {
-		if value, err := chain(line); err != nil {
+		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
 			slog.Info("processed line", "line", line, "output", value)
@@ -80,35 +70,21 @@ func doRecordSpecificEventTypesWithFormat(args []string, format string, filter f
 
 	stopwatch := &transformers.StopWatch[string, string]{}
 
-	chain := Apply(
+	xform := chain.Of9(
 		stopwatch.Start(),
-		Then(
-			transformers.StringToByteArray(),
-			Then(
-				amqp.JSONToMessage(),
-				Then(
-					oslo.MessageToOslo(false),
-					Then(
-						notification.OsloToNotification(false),
-						Then(
-							transformers.AcceptIf(filter),
-							Then(
-								transformers.Format[notification.Notification](format),
-								Then(
-									transformers.Write[string](os.Stdout, true),
-									stopwatch.Stop(),
-								),
-							),
-						),
-					),
-				),
-			),
-		),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		transformers.AcceptIf(filter),
+		transformers.Format[notification.Notification](format),
+		transformers.Write[string](os.Stdout, true),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()
 	for line := range files.AllLinesContext(ctx, args...) {
-		if value, err := chain(line); err != nil {
+		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
 			slog.Info("processed line", "line", line, "output", value)
@@ -127,31 +103,21 @@ func doEventTypesStats(args []string) error {
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
 	multicounter := &transformers.MultiCounter[notification.Notification, string]{}
 
-	chain := Apply(
+	xform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			transformers.StringToByteArray(),
-			Then(
-				amqp.JSONToMessage(),
-				Then(
-					oslo.MessageToOslo(false),
-					Then(
-						notification.OsloToNotification(false),
-						Then(
-							multicounter.Add(func(n notification.Notification) string {
-								return n.Summary().EventType
-							}),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		multicounter.Add(func(n notification.Notification) string {
+			return n.Summary().EventType
+		}),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()
 	for line := range files.AllLinesContext(ctx, args...) {
-		if value, err := chain(line); err != nil {
+		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
 			slog.Info("processed line", "line", line, "output", value)
@@ -175,24 +141,14 @@ func printEventsAsYAML(args []string, filter func(n notification.Notification) b
 
 	ctx := context.Background()
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
-	chain := Apply(
+	chain := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			transformers.StringToByteArray(),
-			Then(
-				amqp.JSONToMessage(),
-				Then(
-					oslo.MessageToOslo(false),
-					Then(
-						notification.OsloToNotification(false),
-						Then(
-							transformers.AcceptIf(filter),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		transformers.AcceptIf(filter),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()

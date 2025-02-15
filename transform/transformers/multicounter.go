@@ -3,7 +3,7 @@ package transformers
 import (
 	"fmt"
 
-	"github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
 // MultiCounter holds the state needed to group items and count them
@@ -17,14 +17,14 @@ type MultiCounter[T any, K comparable] struct {
 
 // Add adds 1 to the count of items flowing through the chain. This
 // filter does not affect the value flowing through.
-func (c *MultiCounter[T, K]) Add(keyer func(value T) K) transform.X[T, T] {
+func (c *MultiCounter[T, K]) Add(keyer func(value T) K) chain.X[T, T] {
 	return c.AddIf(keyer, func(value T) bool { return true })
 }
 
 // AddIf adds 1 to the count of items flowing through the chain, if
 // the given condition returns true. This filter does not affect the
 // value flowing through.
-func (c *MultiCounter[T, K]) AddIf(keyer func(value T) K, condition func(value T) bool) transform.X[T, T] {
+func (c *MultiCounter[T, K]) AddIf(keyer func(value T) K, condition func(value T) bool) chain.X[T, T] {
 	c.counts = map[K]int64{}
 	return func(value T) (T, error) {
 		if condition(value) {
@@ -46,7 +46,7 @@ func (c *MultiCounter[T, K]) AddIf(keyer func(value T) K, condition func(value T
 // AddUnless adds 1 to the count of items flowing through the chain, unless
 // the given condition returns true. This filter does not affect the
 // value flowing through.
-func (c *MultiCounter[T, K]) AddUnless(keyer func(value T) K, condition func(value T) bool) transform.X[T, T] {
+func (c *MultiCounter[T, K]) AddUnless(keyer func(value T) K, condition func(value T) bool) chain.X[T, T] {
 	c.counts = map[K]int64{}
 	return func(value T) (T, error) {
 		if !condition(value) {

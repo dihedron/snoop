@@ -12,8 +12,8 @@ import (
 	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/generator/rabbitmq"
 	"github.com/dihedron/snoop/openstack/amqp"
-	. "github.com/dihedron/snoop/transform"
-	"github.com/dihedron/snoop/transformers"
+	"github.com/dihedron/snoop/transform/chain"
+	"github.com/dihedron/snoop/transform/transformers"
 	"github.com/rabbitmq/amqp091-go"
 )
 
@@ -57,15 +57,11 @@ func (cmd *Record) Execute(args []string) error {
 	defer cancel()
 
 	stopwatch := &transformers.StopWatch[*amqp091.Delivery, []byte]{}
-	chain := Apply(
+	xform := chain.Of4(
 		stopwatch.Start(),
-		Then(
-			amqp.DeliveryToMessage(false),
-			Then(
-				transformers.ToJSON[*amqp.Message](),
-				stopwatch.Stop(),
-			),
-		),
+		amqp.DeliveryToMessage(false),
+		transformers.ToJSON[*amqp.Message](),
+		stopwatch.Stop(),
 	)
 
 	count := 0
@@ -74,7 +70,7 @@ func (cmd *Record) Execute(args []string) error {
 		if count == 10 {
 			break
 		}
-		value, err := chain(&m)
+		value, err := xform(&m)
 		if err != nil {
 			slog.Error("error applying chain to message", "error", err)
 		} else {
