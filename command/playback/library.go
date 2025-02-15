@@ -141,7 +141,7 @@ func printEventsAsYAML(args []string, filter func(n notification.Notification) b
 
 	ctx := context.Background()
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
-	chain := chain.Of7(
+	xform := chain.Of7(
 		stopwatch.Start(),
 		transformers.StringToByteArray(),
 		amqp.JSONToMessage(),
@@ -153,7 +153,7 @@ func printEventsAsYAML(args []string, filter func(n notification.Notification) b
 
 	files := file.New()
 	for line := range files.AllLinesContext(ctx, args...) {
-		if value, err := chain(line); err != nil {
+		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
 			slog.Info("processed line", "line", line, "output", value)
