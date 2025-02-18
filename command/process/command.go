@@ -29,13 +29,13 @@ import (
 // without actually writing events to syslog or acknowledging incoming messages to
 // RabbitMQ.
 type Process struct {
-	base.ConfiguredCommand
-	// Playback indicates whether the command should read the data to process
-	// from a file instead of connecting to RabbitMQ (in which case the
-	// configuration is not needed.
-	Playback bool `short:"p" long:"playback" description:"Whether the messages will be read from some input file(s)." optional:"yes"`
-	// Record holds the path to the file to write to; if the value is -, the
-	// messages will be written to STDOUT.
+	base.ConnectedCommand
+	// Playback indicates whether the command should read the incoming messages
+	// from a file instead of connecting to RabbitMQ; either --connect or --playback
+	// can be specified, but not both.
+	Playback string `short:"p" long:"playback" description:"Whether the messages will be read from some input file(s)." optional:"yes"`
+	// Record indicates the optional path to a file used for recording incoming
+	// messages. This flag is only compatible with the
 	Record *string `short:"r" long:"record" description:"The path to the file to write to (use '-' for STDOUT)." optional:"yes"`
 	// Truncate is used to specify whether the output file (if --record refers
 	// to a file on disk) should be truncated before writing to it.

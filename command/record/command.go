@@ -21,7 +21,7 @@ import (
 // out to standard output or to a file.
 // ./snoop record --configuration=tests/rabbitmq/brokerd.yaml --output=20220818.amqp.messages
 type Record struct {
-	base.ConfiguredCommand
+	base.ConnectedCommand
 	// Truncate is used to specify whether the output file (if one is
 	// specified) should be truncated before writing to it.
 	Truncate bool `short:"t" long:"truncate" description:"Whether the output file should be truncated or appended to (default)." optional:"yes"`
@@ -31,26 +31,19 @@ type Record struct {
 func (cmd *Record) Execute(args []string) error {
 	slog.Debug("draining and recording messages from RabbitMQ")
 
-	if cmd.Configuration == nil {
-		slog.Error("no configuration provided")
-		return errors.New("no configuration provided")
+	if cmd.Connect == nil {
+		slog.Error("no connection info provided")
+		return errors.New("no connection info provided")
 	}
 
-	slog.Debug("reading configuration", "configuration", *cmd.Configuration)
+	slog.Debug("reading connection info", "connection info", *cmd.Connect)
 
 	rmq := &rabbitmq.RabbitMQ{}
-	err := rawdata.UnmarshalInto("@"+*cmd.Configuration, rmq)
+	err := rawdata.UnmarshalInto("@"+*cmd.Connect, rmq)
 	if err != nil {
-		slog.Error("error reading configuration file", "error", err)
+		slog.Error("error reading connection info", "error", err)
 	}
-	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
-
-	// fmt.Printf("%s\n", format.ToPrettyJSON(rmq))
-
-	// options := rmq.ToOptions()
-	// slog.Debug("RabbitMQ options in JSON format", "options", format.ToJSON(options))
-
-	// fmt.Printf("%s\n", format.ToYAML(options))
+	slog.Debug("RabbitMQ connection info file in JSON format", "configuration", format.ToJSON(rmq))
 
 	// now prepare the processing chain
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
