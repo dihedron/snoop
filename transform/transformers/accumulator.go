@@ -1,7 +1,7 @@
 package transformers
 
 import (
-	"github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
 type Accumulator[T any] struct {
@@ -10,7 +10,7 @@ type Accumulator[T any] struct {
 
 // Add adds the value flowing into the transformer to an internal
 // buffer. This filter does not affect the value flowing through.
-func (a *Accumulator[T]) Add() transform.X[T, T] {
+func (a *Accumulator[T]) Add() chain.X[T, T] {
 	return func(value T) (T, error) {
 		a.values = append(a.values, value)
 		return value, nil

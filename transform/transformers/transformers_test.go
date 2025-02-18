@@ -13,10 +13,10 @@ import (
 	"github.com/dihedron/snoop/generator/integer"
 	"github.com/dihedron/snoop/generator/random"
 	"github.com/dihedron/snoop/test"
-	. "github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
-func Log[T any](t *testing.T) F[T] {
+func Log[T any](t *testing.T) chain.F[T] {
 	test.Setup(t)
 	return func(value T) (T, error) {
 		slog.Debug("value flowing through", "value", value, "type", format.TypeAsString(value))
@@ -32,24 +32,14 @@ func TestFibonacciChain(t *testing.T) {
 	counter := &Counter[int64]{}
 	accumulator := &Accumulator[int64]{}
 
-	transform := Apply(
+	transform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			Log[int64](t),
-			Then(
-				Delay[int64](50*time.Millisecond),
-				Then(
-					Writef[int64](&buffer, "%d\n", true),
-					Then(
-						counter.Add(),
-						Then(
-							accumulator.Add(),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		Log[int64](t),
+		Delay[int64](50*time.Millisecond),
+		Writef[int64](&buffer, "%d\n", true),
+		counter.Add(),
+		accumulator.Add(),
+		stopwatch.Stop(),
 	)
 	for value := range fibonacci.Series(1_000_000) {
 		if _, err := transform(value); err != nil {
@@ -68,24 +58,14 @@ func TestRandomChain(t *testing.T) {
 	counter := &Counter[int64]{}
 	accumulator := &Accumulator[int64]{}
 
-	transform := Apply(
+	transform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			Log[int64](t),
-			Then(
-				Delay[int64](50*time.Millisecond),
-				Then(
-					Writef[int64](&buffer, "%d\n", true),
-					Then(
-						counter.Add(),
-						Then(
-							accumulator.Add(),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		Log[int64](t),
+		Delay[int64](50*time.Millisecond),
+		Writef[int64](&buffer, "%d\n", true),
+		counter.Add(),
+		accumulator.Add(),
+		stopwatch.Stop(),
 	)
 
 	for value := range random.Sequence(0, 1_000) {
@@ -105,24 +85,14 @@ func TestFileChain(t *testing.T) {
 	counter := &Counter[string]{}
 	accumulator := &Accumulator[string]{}
 
-	transform := Apply[string, string](
+	transform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			Log[string](t),
-			Then(
-				Delay[string](50*time.Millisecond),
-				Then(
-					Writef[string](&buffer, "%s\n", true),
-					Then[string, string](
-						counter.Add(),
-						Then(
-							accumulator.Add(),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		Log[string](t),
+		Delay[string](50*time.Millisecond),
+		Writef[string](&buffer, "%s\n", true),
+		counter.Add(),
+		accumulator.Add(),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()
@@ -141,30 +111,18 @@ func TestSequenceWithSkipOddChain(t *testing.T) {
 	counter := &Counter[int64]{}
 	accumulator := &Accumulator[int64]{}
 
-	transform := Apply(
+	transform := chain.Of8(
 		stopwatch.Start(),
-		Then(
-			Log[int64](t),
-			Then(
-				Delay[int64](50*time.Millisecond),
-				Then(
-					counter.Add(),
-					Then(
-						AcceptIf(func(value int64) bool { return value%2 == 0 }),
-						Then(
-							Writef[int64](&buffer, "%d\n", true),
-							Then(
-								accumulator.Add(),
-								stopwatch.Stop(),
-							),
-						),
-					),
-				),
-			),
-		),
+		Log[int64](t),
+		Delay[int64](50*time.Millisecond),
+		counter.Add(),
+		AcceptIf(func(value int64) bool { return value%2 == 0 }),
+		Writef[int64](&buffer, "%d\n", true),
+		accumulator.Add(),
+		stopwatch.Stop(),
 	)
 	for value := range integer.Sequence(0, 1_000, 1) {
-		if _, err := transform(value); err != nil && err != Drop || counter.Count() >= 10 {
+		if _, err := transform(value); err != nil && err != chain.Drop || counter.Count() >= 10 {
 			break
 		}
 	}
@@ -180,27 +138,15 @@ func TestCatenate(t *testing.T) {
 	counter := &Counter[int64]{}
 	catenator := &Catenator[string]{Join: ", "}
 
-	transform := Apply(
+	transform := chain.Of8(
 		stopwatch.Start(),
-		Then(
-			Log[int64](t),
-			Then(
-				Delay[int64](50*time.Millisecond),
-				Then(
-					Writef[int64](&buffer, "%d\n", true),
-					Then(
-						counter.Add(),
-						Then(
-							ToString[int64](),
-							Then(
-								catenator.Add(),
-								stopwatch.Stop(),
-							),
-						),
-					),
-				),
-			),
-		),
+		Log[int64](t),
+		Delay[int64](50*time.Millisecond),
+		Writef[int64](&buffer, "%d\n", true),
+		counter.Add(),
+		ToString[int64](),
+		catenator.Add(),
+		stopwatch.Stop(),
 	)
 
 	for value := range random.Sequence(0, 1_000) {
@@ -220,24 +166,14 @@ func TestCacheFromFile(t *testing.T) {
 	counter := &Counter[string]{}
 	cache := &Cache[string, string]{}
 
-	transform := Apply[string, string](
+	transform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			Log[string](t),
-			Then(
-				Delay[string](50*time.Millisecond),
-				Then(
-					Writef[string](&buffer, "%s\n", true),
-					Then[string, string](
-						counter.Add(),
-						Then(
-							cache.Set(func(s string) string { return s[:1] }),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		Log[string](t),
+		Delay[string](50*time.Millisecond),
+		Writef[string](&buffer, "%s\n", true),
+		counter.Add(),
+		cache.Set(func(s string) string { return s[:1] }),
+		stopwatch.Stop(),
 	)
 	files := file.New()
 	for value := range files.AllLines("../generator/file/test.txt") {
@@ -257,24 +193,14 @@ func TestMultipleCacheFromMultipleFiles(t *testing.T) {
 	counter := &Counter[string]{}
 	multicache := &MultiCache[string, string]{}
 
-	transform := Apply(
+	transform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			Log[string](t),
-			Then(
-				Delay[string](50*time.Millisecond),
-				Then(
-					Writef[string](&buffer, "%s\n", true),
-					Then(
-						counter.Add(),
-						Then(
-							multicache.Set(func(s string) string { return s[:1] }),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		Log[string](t),
+		Delay[string](50*time.Millisecond),
+		Writef[string](&buffer, "%s\n", true),
+		counter.Add(),
+		multicache.Set(func(s string) string { return s[:1] }),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()

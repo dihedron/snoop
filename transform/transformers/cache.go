@@ -1,6 +1,6 @@
 package transformers
 
-import "github.com/dihedron/snoop/transform"
+import "github.com/dihedron/snoop/transform/chain"
 
 // Cache holds a map into which values can be accumulated under
 // keys dynamically computed through a user-provided function.
@@ -11,7 +11,7 @@ type Cache[K comparable, T any] struct {
 // Set adds the item to the cache by first applying a function
 // that extracts the key under which the item will be added
 // and then adding it to an internal map.
-func (c *Cache[K, T]) Set(keyer func(value T) K) transform.X[T, T] {
+func (c *Cache[K, T]) Set(keyer func(value T) K) chain.X[T, T] {
 	return func(value T) (T, error) {
 		key := keyer(value)
 		if c.cache == nil {

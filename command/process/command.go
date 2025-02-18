@@ -17,8 +17,8 @@ import (
 	"github.com/dihedron/snoop/openstack/oslo"
 
 	//lint:ignore ST1001 we want to use the API in a fluent way with no clutter
-	. "github.com/dihedron/snoop/transform"
-	"github.com/dihedron/snoop/transformers"
+	"github.com/dihedron/snoop/transform/chain"
+	"github.com/dihedron/snoop/transform/transformers"
 )
 
 // Process is the command that reads message from RabbitMQ and processes them to
@@ -239,24 +239,14 @@ func (cmd *Process) processFromFile(args []string) error {
 
 	//acceptedEvents := []string{"compute.instance.shutdown.end", "compute.instance.shutdown.start"}
 
-	unwrap := Apply(
+	unwrap := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			transformers.StringToByteArray(),
-			Then(
-				amqp.JSONToMessage(),
-				Then(
-					oslo.MessageToOslo(false),
-					Then(
-						notification.OsloToNotification(false),
-						Then(
-							multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()

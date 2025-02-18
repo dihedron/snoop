@@ -14,8 +14,8 @@ import (
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
-	. "github.com/dihedron/snoop/transform"
-	"github.com/dihedron/snoop/transformers"
+	"github.com/dihedron/snoop/transform/chain"
+	"github.com/dihedron/snoop/transform/transformers"
 )
 
 // Embed the file content as string.
@@ -39,31 +39,21 @@ func (cmd *Playback) Execute(args []string) error {
 	ctx := context.Background()
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
 	multicache := &transformers.MultiCache[string, notification.Notification]{}
-	chain := Apply(
+	xform := chain.Of7(
 		stopwatch.Start(),
-		Then(
-			transformers.StringToByteArray(),
-			Then(
-				amqp.JSONToMessage(),
-				Then(
-					oslo.MessageToOslo(false),
-					Then(
-						notification.OsloToNotification(false),
-						Then(
-							multicache.Set(func(n notification.Notification) string {
-								return n.Summary().EventType
-							}),
-							stopwatch.Stop(),
-						),
-					),
-				),
-			),
-		),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		multicache.Set(func(n notification.Notification) string {
+			return n.Summary().EventType
+		}),
+		stopwatch.Stop(),
 	)
 
 	files := file.New()
 	for line := range files.AllLinesContext(ctx, args...) {
-		if value, err := chain(line); err != nil {
+		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
 		} else {
 			slog.Info("processed line", "line", line, "output", value)

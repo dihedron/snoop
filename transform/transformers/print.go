@@ -5,10 +5,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
-func Print[T any](stream io.Writer) transform.X[T, T] {
+func Print[T any](stream io.Writer) chain.X[T, T] {
 	var s io.Writer = os.Stdout
 	if stream != nil {
 		s = stream

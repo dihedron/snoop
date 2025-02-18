@@ -9,10 +9,10 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	f "github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/templating"
-	"github.com/dihedron/snoop/transform"
+	"github.com/dihedron/snoop/transform/chain"
 )
 
-func Format[T any](format string) transform.X[T, string] {
+func Format[T any](format string) chain.X[T, string] {
 	var buffer bytes.Buffer
 
 	// populate the functions map
