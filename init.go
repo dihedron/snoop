@@ -6,10 +6,21 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+
+	"github.com/dihedron/snoop/metadata"
+	"github.com/joho/godotenv"
 )
 
 func init() {
+	slog.Error("checking .env environment variable", "name", metadata.DotEnvVarName)
+	if dotenv, ok := os.LookupEnv(metadata.DotEnvVarName); ok {
+		if err := godotenv.Load(dotenv); err != nil {
+			slog.Error("error loading .env file", "error", err)
+		}
+	}
+
 	const LevelNone = slog.Level(1000)
 
 	options := &slog.HandlerOptions{
@@ -69,7 +80,7 @@ func init() {
 		case "file":
 			filename := fmt.Sprintf("%s-%d.log", path.Base(os.Args[0]), os.Getpid())
 			var err error
-			writer, err = os.Create(filename)
+			writer, err = os.Create(filepath.Clean(filename))
 			if err != nil {
 				writer = os.Stderr
 			}

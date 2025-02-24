@@ -9,16 +9,22 @@ import (
 
 	"github.com/dihedron/rawdata"
 	"github.com/dihedron/snoop/command/base"
+	"github.com/dihedron/snoop/command/common"
 	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/generator/rabbitmq"
 	"github.com/fatih/color"
-	"github.com/go-playground/validator/v10"
 )
 
 // Ping is the command that checks connectivity against the RabbitMQ servers
 // in the given configuration.
 type Check struct {
-	base.ConfiguredCommand
+	base.Command
+	// ConnectionInfo contains the path to the (optional) configuration file to use to
+	// connect to a RabbitMQ instance; if no value is provided (neither on the
+	// command line nor in the environment via the SNOOP_CONNECT variable), the
+	// application will look for a viable configuration file named .snoop.yaml
+	// under a few well-known paths: /etc, the current directory etc.
+	Profile string `short:"p" long:"profile" description:"The path to the file containing the RabbitMQ connection info (aka profile)." required:"yes" env:"SNOOP_PROFILE" validate:"file"`
 }
 
 const MaxMessages = 1
@@ -26,32 +32,32 @@ const MaxMessages = 1
 // Execute is the real implementation of the Check command.
 func (cmd *Check) Execute(args []string) error {
 
-	if cmd.Configuration == nil {
-		slog.Error("no configuration provided")
-		return errors.New("no configuration provided")
+	// TODO: is this needed?
+	if cmd.Profile == "" {
+		slog.Error("no profile provided")
+		return errors.New("no profile provided")
 	}
 
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	if err := validate.Struct(cmd); err != nil {
+	if err := common.Validate(cmd); err != nil {
 		slog.Error("error validating command struct", "error", err)
 		return err
 	}
 
-	slog.Debug("running with configuration", "configuration", cmd.Configuration)
+	slog.Debug("connection profile available", "path", cmd.Profile)
 
 	rmq := &rabbitmq.RabbitMQ{}
-	err := rawdata.UnmarshalInto("@"+*cmd.Configuration, rmq)
+	err := rawdata.UnmarshalInto("@"+cmd.Profile, rmq)
 	if err != nil {
-		slog.Error("error reading configuration file", "error", err)
+		slog.Error("error reading connection info file", "error", err)
 	}
 
-	if err := validate.Struct(rmq); err != nil {
-		slog.Error("error validating configuration struct", "error", err)
+	if err := common.Validate(rmq); err != nil {
+		slog.Error("error validating connection info struct", "error", err)
 		return err
 	}
 
-	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))
-	fmt.Printf("%s:\n%s", color.YellowString("configuration"), color.BlueString(format.ToYAML(rmq)))
+	slog.Debug("RabbitMQ connection info file in JSON format", "connection info", format.ToJSON(rmq))
+	fmt.Printf("%s:\n%s", color.YellowString("connection info"), color.BlueString(format.ToYAML(rmq)))
 
 	// check if servers can be contacted, one at a time
 	servers := rmq.Servers

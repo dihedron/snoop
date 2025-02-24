@@ -29,11 +29,15 @@ import (
 // without actually writing events to syslog or acknowledging incoming messages to
 // RabbitMQ.
 type Process struct {
-	base.ConnectedCommand
-	// Playback indicates whether the command should read the incoming messages
-	// from a file instead of connecting to RabbitMQ; either --connect or --playback
-	// can be specified, but not both.
-	Playback string `short:"p" long:"playback" description:"Whether the messages will be read from some input file(s)." optional:"yes"`
+	base.Command
+
+	// ConnectionInfo contains the path to the (optional) configuration file to use to
+	// connect to a RabbitMQ instance; if no value is provided (neither on the
+	// command line nor in the environment via the SNOOP_CONNECT variable), the
+	// application will look for a viable configuration file named .snoop.yaml
+	// under a few well-known paths: /etc, the current directory etc.
+	ConnectionInfo string `short:"c" long:"connection-info" description:"The path to the file containing the RabbitMQ connection info." optional:"yes" env:"SNOOP_CONNECT" validate:"file"`
+
 	// Record indicates the optional path to a file used for recording incoming
 	// messages. This flag is only compatible with the
 	Record *string `short:"r" long:"record" description:"The path to the file to write to (use '-' for STDOUT)." optional:"yes"`
@@ -43,44 +47,25 @@ type Process struct {
 	// DryRun is used to specify whether the command should be run so that it
 	// has no side effects, i.e. it simulates processing without actually writing
 	// events to syslog and acknowledging incoming messages to RabbitMQ.
-	DryRun bool `short:"d" long:"dry-run" description:"Whether to perform a dry run, i.e. simulating processing with no side effects." optional:"yes"`
+	NoSyslog bool `short:"s" long:"no-syslog" description:"Whether to run the command without emitting events to syslog." optional:"yes"`
 }
 
 // Execute is the real implementation of the Record command.
 func (cmd *Process) Execute(args []string) error {
 	var err error
 
-	//
-	// validate command line flags first
-	//
-	if cmd.Playback {
-		// running from file, so the input files are mandatory
-		if len(args) == 0 {
-			slog.Error("no input files")
-			return errors.New("no input files provided")
-		}
-		if cmd.Record != nil {
-			slog.Warn("ignoring --record flag when running in playback mode")
-			cmd.Record = nil
-		}
-	} else {
-		// running from RabbitMQ, so the configuration file is mandatory
-		if cmd.Configuration == nil {
-			slog.Error("no configuration file provided")
-			return errors.New("no configuration file provided")
-		}
+	// running from RabbitMQ, so the configuration file is mandatory
+	if cmd.ConnectionInfo == "" {
+		slog.Error("no connection info file provided")
+		return errors.New("no connection info file provided")
 	}
 
 	//
 	// prepare the writer
 	//
 	var writer io.Writer = io.Discard
-	if cmd.Record != nil {
+	if cmd.Record != nil && *cmd.Record != "" {
 		switch *cmd.Record {
-		case "":
-			// this should never happen
-			slog.Error("no output file provided")
-			return errors.New("no output file provided")
 		case "-":
 			slog.Info("writing to STDOUT")
 			writer = os.Stdout
@@ -94,10 +79,10 @@ func (cmd *Process) Execute(args []string) error {
 				slog.Debug("opening output file in append mode", "path", *cmd.Record)
 				flags = os.O_APPEND | os.O_CREATE | os.O_WRONLY
 			}
-			file, err := os.OpenFile(*cmd.Record, flags, 0666)
+			file, err := os.OpenFile(*cmd.Record, flags, 0600)
 			if err != nil {
 				slog.Error("error opening recorder output file in append mode", "path", *cmd.Record, "mode", cmd.Truncate, "error", err)
-				return errors.New("error openinig output file")
+				return errors.New("error opening output file")
 			}
 			defer file.Close()
 			writer = file
@@ -105,22 +90,24 @@ func (cmd *Process) Execute(args []string) error {
 	}
 	slog.Debug("writer is ready", "type", fmt.Sprintf("%T", writer))
 
-	//
-	// if dry run, do not output to syslog nor ack the messages
-	//
-	if cmd.DryRun {
-		slog.Info("running in dry-run mode")
-		//syslog := &transformers.SysLogWriter{}
-	}
+	/*
+		//
+		// if dry run, do not output to syslog nor ack the messages
+		//
+		if cmd.DryRun {
+			slog.Info("running in dry-run mode")
+			//syslog := &transformers.SysLogWriter{}
+		}
 
-	//
-	// if in playback mode, retrieve the messages from file
-	//
-	if cmd.Playback {
-		err = cmd.processFromFile(args)
-	} else {
-		err = cmd.processFromRabbitMQ()
-	}
+		//
+		// if in playback mode, retrieve the messages from file
+		//
+		if cmd.Playback {
+			err = cmd.processFromFile(args)
+		} else {
+			err = cmd.processFromRabbitMQ()
+		}
+	*/
 	/*
 			// read configuration
 			cfg, err := helpers.LoadConfiguration(cmd.Configuration)
