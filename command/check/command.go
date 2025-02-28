@@ -24,7 +24,7 @@ type Check struct {
 	// command line nor in the environment via the SNOOP_CONNECT variable), the
 	// application will look for a viable configuration file named .snoop.yaml
 	// under a few well-known paths: /etc, the current directory etc.
-	Profile string `short:"p" long:"profile" description:"The path to the file containing the RabbitMQ connection info (aka profile)." required:"yes" env:"SNOOP_PROFILE" validate:"file"`
+	Profile string `short:"p" long:"profile" description:"The path to the file containing the RabbitMQ connection info (aka profile)." required:"yes" env:"SNOOP_PROFILE"`
 }
 
 const MaxMessages = 1
