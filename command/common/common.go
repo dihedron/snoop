@@ -24,7 +24,7 @@ func Validate(v any) error {
 
 // GetWriter returns amn io.Writer (possibly an io.WriteCloser)
 // where messages can be recorded,
-func GetWriter(path string, truncate bool) (io.Writer, error) {
+func GetWriter(path string, truncate *bool) (io.Writer, error) {
 	if path == "" {
 		slog.Error("invalid output path")
 		return nil, errors.New("invalid output path")
@@ -37,7 +37,7 @@ func GetWriter(path string, truncate bool) (io.Writer, error) {
 
 	slog.Info("writing to file", "path", path)
 	flags := 0
-	if truncate {
+	if truncate != nil && *truncate {
 		slog.Debug("opening output file in truncate mode", "path", path)
 		flags = os.O_TRUNC | os.O_CREATE | os.O_WRONLY
 	} else {
