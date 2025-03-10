@@ -26,22 +26,14 @@ import (
 // ./snoop record --connnection-info=tests/rabbitmq/brokerd.yaml --output=20220818.amqp.messages
 type Record struct {
 	base.Command
-	// Profile contains the path to the (optional) configuration file to use to
-	// connect to a RabbitMQ instance; if no value is provided (neither on the
-	// command line nor in the environment via the SNOOP_CONNECT variable), the
-	// application will look for a viable configuration file named .snoop.yaml
-	// under a few well-known paths: /etc, the current directory etc.
+	// Profile contains the path to the configuration file to use to connect to
+	// a RabbitMQ instance.
 	Profile string `short:"p" long:"profile" description:"The path to the file containing the RabbitMQ connection info (aka profile)." required:"yes" env:"SNOOP_PROFILE"`
 	// Truncate is used to specify whether the output file (if one is specified)
 	// should be truncated before writing to it.
 	Truncate *bool `short:"t" long:"truncate" description:"Whether the output file should be truncated or appended to (default)." optional:"yes" env:"SNOOP_TRUNCATE"`
-	// NoAck specifies whether the AMQP messages should not be acknowledged; this
-	// hidden flag allows to test the recorder without purging messages from the
-	// RabbitMQ source, so they can be redelivered and re-processed.
-	NoAck bool `short:"a" long:"no-ack" description:"Whether the AMQP messages should not be acknowledged." optional:"yes" hidden:"yes" env:"SNOOP_NOACK"`
-	// Truncate is used to specify whether the output file (if one is specified)
-	// should be truncated before writing to it.
-	Limit *int `short:"l" long:"limit" description:"Whether to process only the given amount of messages." optional:"yes" env:"SNOOP_LIMIT"`
+	// Limit is used to specify the number of messages to process before exiting.
+	Limit *int `short:"l" long:"limit" description:"Whether to process only the given amount of messages." optional:"yes" hidden:"yes" env:"SNOOP_LIMIT"`
 }
 
 // Execute is the real implementation of the Record command.
@@ -110,17 +102,15 @@ func (cmd *Record) Execute(args []string) error {
 		if cmd.Limit != nil && count >= limit {
 			break
 		}
-		value, err := xform(&m)
+		value, err := xform(m)
 		if err != nil {
 			slog.Error("error applying chain to message", "error", err)
 		} else {
 			slog.Debug("AMQP091 message received", "value", format.ToPrettyJSON(value))
 			fmt.Fprintf(writer, "%s\n", value)
-			if !cmd.NoAck {
-				slog.Debug("acknowledging incoming AMQP message")
-				if err := m.Ack(false); err != nil {
-					slog.Error("error acknowledging message", "id", m.MessageId, "error", err)
-				}
+			slog.Debug("acknowledging incoming AMQP message")
+			if err := m.Ack(false); err != nil {
+				slog.Error("error acknowledging message", "id", m.MessageId, "error", err)
 			}
 		}
 	}

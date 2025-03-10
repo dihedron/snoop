@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"testing"
@@ -13,13 +14,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func TestRabbitMQContext(t *testing.T) {
+func TestRabbitMQContextWithConsumeOnce(t *testing.T) {
 	test.Setup(t)
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		slog.Error("error loading environment", "error", err)
+	}
 
 	rmq := &RabbitMQ{}
 	rawdata.UnmarshalInto("@"+os.Getenv("FILE"), rmq)
 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToPrettyJSON(rmq))
+
+	log.Printf("CONFIGURATION:\n%s\n", format.ToPrettyJSON(rmq))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
@@ -38,7 +43,9 @@ func TestRabbitMQContext(t *testing.T) {
 
 func TestRabbitMQConfigurationAndValidation(t *testing.T) {
 	test.Setup(t)
-	godotenv.Load()
+	if err := godotenv.Load(".env"); err != nil {
+		slog.Error("error loading environment", "error", err)
+	}
 
 	rmq := &RabbitMQ{}
 	slog.Debug("RabbitMQ configuration file in JSON format", "configuration", format.ToJSON(rmq))

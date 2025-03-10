@@ -68,198 +68,149 @@ func (r *RabbitMQ) Reset() {
 // an iterator that can be used inside a range loop; if an error occurs, or
 // the context is cancelled, the iterator stops yielding values to the range
 // loop and the Err() method can be used to retrieve the error.
-func (r *RabbitMQ) All(ctx context.Context) iter.Seq[amqp091.Delivery] {
-	slog.Debug("starting to collect messages from RabbitMQ")
+func (r *RabbitMQ) All(ctx context.Context) iter.Seq[*amqp091.Delivery] {
+	slog.Debug("starting generator on RabbitMQ queue")
 	r.err = nil
-	if ctx == nil {
-		slog.Debug("no context provided, allocating default context...")
-		ctx = context.Background()
-	}
 
 	if err := r.Validate(); err != nil {
 		slog.Error("invalid configuration", "error", err)
 		r.err = err
 		return nil
 	}
-	return func(yield func(amqp091.Delivery) bool) {
-		// gather the URLs of the servers
-		urls := []string{}
-		for _, server := range r.Servers {
-			proto := ""
-			if server.TLSInfo != nil && server.TLSInfo.EnableTLS {
-				proto = "amqps"
-			} else {
-				proto = "amqp"
-			}
-			url := ""
-			if server.Username != nil && server.Password != nil {
-				url = fmt.Sprintf("%s://%s:%s@%s:%d/", proto, *server.Username, *server.Password, server.Address, server.Port)
-			} else {
-				url = fmt.Sprintf("%s://%s:%d/", proto, server.Address, server.Port)
-			}
-			urls = append(urls, url)
-			slog.Info("RabbitMQ server url", "value", url)
-		}
 
-		slog.Debug("connecting to RabbitMQ server URLs", "urls", urls)
+	slog.Debug("configuration is valid")
 
-		binds := []rabbit.Binding{}
-		for _, binding := range r.Bindings {
-			slog.Info("adding exchange with routing keys", "exchange name", binding.Exchange.Name, "routing keys", binding.RoutingKeys)
-			binds = append(binds, rabbit.Binding{
-				ExchangeName:       binding.Exchange.Name,
-				ExchangeType:       binding.Exchange.Type.String(),
-				ExchangeDurable:    binding.Exchange.Durable,
-				ExchangeDeclare:    binding.Exchange.Declare,
-				ExchangeAutoDelete: binding.Exchange.AutoDelete,
-				BindingKeys:        binding.RoutingKeys,
-			})
-		}
+	if ctx == nil {
+		slog.Debug("no context provided, allocating default context...")
+		ctx = context.Background()
+	}
 
-		slog.Info("binding to queue", "name", r.Queue.Name, "declare", r.Queue.Declare, "durable", r.Queue.Durable, "exclusive", r.Queue.Exclusive, "autodelete", r.Queue.AutoDelete)
-
-		options := &rabbit.Options{
-			URLs:              urls,
-			Mode:              rabbit.Consumer,
-			QueueName:         r.Queue.Name,
-			QueueDeclare:      r.Queue.Declare,
-			QueueDurable:      r.Queue.Durable,
-			QueueExclusive:    r.Queue.Exclusive,
-			QueueAutoDelete:   r.Queue.AutoDelete,
-			Bindings:          binds,
-			QosPrefetchCount:  DefaultQosPrefetchCount,
-			QosPrefetchSize:   DefaultQosPrefetchSize,
-			RetryReconnectSec: DefaultReconnectSec,
-			AppID:             DefaultClientID,
-			ConsumerTag:       DefaultClientID,
-			ConnectionTimeout: r.Client.Timeout,
-		}
-		if r.Client.ID != "" {
-			options.AppID = r.Client.ID
-		}
-		if r.Client.Tag != "" {
-			options.ConsumerTag = r.Client.Tag
-		}
-		slog.Info("RabbitMQ source ready", "client id", r.Client.ID, "tag", r.Client.Tag)
-
-		queue, err := rabbit.New(options)
-		if err != nil {
-			slog.Error("unable to instantiate RabbitMQ client", "error", err)
-			r.err = err
-			return
-		}
-		slog.Info("RabbitMQ client ready to drain messages")
-
-		//
-		// EXPERIMENT START
-		//
-		experimental := true
-		if experimental {
-			func() {
-				slog.Debug("EXPERIMENTAL: retrieving events with an interposed channel")
-				ctx, cancel := context.WithCancel(ctx)
-				defer cancel()
-				values := make(chan amqp091.Delivery)
-				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					slog.Debug("inner producer: started")
-					defer func() {
-						close(values)
-						wg.Done()
-						slog.Debug("inner producer: complete")
-					}()
-					queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
-						//slog.Debug("enqueuing amqp091.Delivery as message", "value", message)
-						message.Nack(true, true)
-						slog.Debug("inner producer: message available for enqueuing")
-						select {
-						case values <- message:
-							slog.Debug("inner producer: message enqueued")
-						case <-ctx.Done():
-							slog.Debug("inner producer: context cancelled, exiting")
-							return nil
-						}
-						return nil
-					}, rabbit.DefaultAckPolicy())
-				}()
-			loop:
-				for {
-					select {
-					case message, ok := <-values:
-						if !ok {
-							slog.Debug("inner consumer: message queue is closed")
-							//cancel()
-							r.err = nil
-							break loop
-						}
-						slog.Debug("inner consumer: yielding dequeued message")
-						if yield(message) {
-							slog.Debug("inner consumer: message processed, continuing...")
-						} else {
-							slog.Debug("inner consumer: range loop broke out (cancelling context)")
-							cancel()
-							r.err = nil
-							break loop
-						}
-					case <-ctx.Done():
-						slog.Info("inner consumer: context done")
-						r.err = nil
-						break loop
-					}
-				}
-				slog.Debug("inner consumer: waiting for inner producer to exit...")
-				wg.Wait()
-				slog.Debug("inner consumer: inner producer exited")
-			}()
+	// gather the URLs of the servers
+	urls := []string{}
+	for _, server := range r.Servers {
+		proto := ""
+		if server.TLSInfo != nil && server.TLSInfo.EnableTLS {
+			proto = "amqps"
 		} else {
-			func() {
-				ctx, cancel := context.WithCancel(ctx)
-				defer cancel()
-				slog.Debug("retrieving events without an interposed channel")
-				// queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
-				// 	//slog.Debug("message ready to consume", "value", message)
-				// 	slog.Debug("generator: message ready to consume")
-				// 	if !yield(message) {
-				// 		slog.Info("generator: stop sending messages (cancel context)")
-				// 		// TODO: check if thins works in a highly concurrent context
-				// 		// where the select() within consume() might not read from
-				// 		// the cancel channel and read some more messages from the
-				// 		// RabbitMQ input queue; in that case, this will panic. It might
-				// 		// be necessary to:
-				// 		// 1. implement a queue that sends messages from this inner func
-				// 		//    to the iterator
-				// 		// 2. have the iterator dequeue messages, check if the yield() func
-				// 		//    return false, signal this func() that it's over and exit immediately
-				// 		cancel()
-				// 		return nil
-				// 	}
-				// 	slog.Info("generator: message accepted from range loop")
-				// 	return nil
-				// }, rabbit.DefaultAckPolicy())
-				queue.ConsumeOnce(ctx, func(message amqp091.Delivery) error {
-					//slog.Debug("message ready to consume", "value", message)
-					slog.Debug("generator: message ready to consume")
-					if !yield(message) {
-						slog.Info("generator: stop sending messages (cancel context)")
-						// TODO: check if thins works in a highly concurrent context
-						// where the select() within consume() might not read from
-						// the cancel channel and read some more messages from the
-						// RabbitMQ input queue; in that case, this will panic. It might
-						// be necessary to:
-						// 1. implement a queue that sends messages from this inner func
-						//    to the iterator
-						// 2. have the iterator dequeue messages, check if the yield() func
-						//    return false, signal this func() that it's over and exit immediately
-						cancel()
-						return nil
-					}
-					slog.Info("generator: message accepted from range loop")
-					return nil
-				}, rabbit.DefaultAckPolicy())
-
-			}()
+			proto = "amqp"
 		}
+		url := ""
+		if server.Username != nil && server.Password != nil {
+			url = fmt.Sprintf("%s://%s:%s@%s:%d/", proto, *server.Username, *server.Password, server.Address, server.Port)
+		} else {
+			url = fmt.Sprintf("%s://%s:%d/", proto, server.Address, server.Port)
+		}
+		urls = append(urls, url)
+		slog.Info("RabbitMQ server url", "value", url)
+	}
+
+	slog.Debug("connecting to RabbitMQ server URLs", "urls", urls)
+
+	binds := []rabbit.Binding{}
+	for _, binding := range r.Bindings {
+		slog.Info("adding exchange with routing keys", "exchange name", binding.Exchange.Name, "routing keys", binding.RoutingKeys)
+		binds = append(binds, rabbit.Binding{
+			ExchangeName:       binding.Exchange.Name,
+			ExchangeType:       binding.Exchange.Type.String(),
+			ExchangeDurable:    binding.Exchange.Durable,
+			ExchangeDeclare:    binding.Exchange.Declare,
+			ExchangeAutoDelete: binding.Exchange.AutoDelete,
+			BindingKeys:        binding.RoutingKeys,
+		})
+	}
+
+	slog.Info("binding to queue", "name", r.Queue.Name, "declare", r.Queue.Declare, "durable", r.Queue.Durable, "exclusive", r.Queue.Exclusive, "autodelete", r.Queue.AutoDelete)
+
+	options := &rabbit.Options{
+		URLs:              urls,
+		Mode:              rabbit.Consumer,
+		QueueName:         r.Queue.Name,
+		QueueDeclare:      r.Queue.Declare,
+		QueueDurable:      r.Queue.Durable,
+		QueueExclusive:    r.Queue.Exclusive,
+		QueueAutoDelete:   r.Queue.AutoDelete,
+		Bindings:          binds,
+		QosPrefetchCount:  DefaultQosPrefetchCount,
+		QosPrefetchSize:   DefaultQosPrefetchSize,
+		RetryReconnectSec: DefaultReconnectSec,
+		AppID:             DefaultClientID,
+		ConsumerTag:       DefaultClientID,
+		ConnectionTimeout: r.Client.Timeout,
+	}
+	if r.Client.ID != "" {
+		options.AppID = r.Client.ID
+	}
+	if r.Client.Tag != "" {
+		options.ConsumerTag = r.Client.Tag
+	}
+	slog.Info("RabbitMQ source ready", "client id", r.Client.ID, "tag", r.Client.Tag)
+
+	queue, err := rabbit.New(options)
+	if err != nil {
+		slog.Error("unable to instantiate RabbitMQ client", "error", err)
+		r.err = err
+		return nil
+	}
+	slog.Info("RabbitMQ client ready to drain messages")
+
+	return func(yield func(*amqp091.Delivery) bool) {
+		slog.Debug("retrieving events with an interposed channel")
+
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		values := make(chan amqp091.Delivery)
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		go func() {
+			slog.Debug("inner producer: started")
+			defer func() {
+				close(values)
+				wg.Done()
+				slog.Debug("inner producer: complete")
+			}()
+			queue.Consume(ctx, nil, func(message amqp091.Delivery) error {
+				//slog.Debug("enqueuing amqp091.Delivery as message", "value", message)
+				//message.Nack(true, true)
+				slog.Debug("inner producer: message available for enqueuing")
+				select {
+				case values <- message:
+					slog.Debug("inner producer: message enqueued")
+				case <-ctx.Done():
+					slog.Debug("inner producer: context cancelled, exiting")
+					return nil
+				}
+				return nil
+			}, rabbit.DefaultAckPolicy())
+		}()
+	loop:
+		for {
+			select {
+			case message, ok := <-values:
+				if !ok {
+					slog.Debug("inner consumer: message queue is closed")
+					r.err = nil
+					break loop
+				}
+				slog.Debug("inner consumer: yielding dequeued message")
+				if yield(&message) {
+					slog.Debug("inner consumer: message processed, continuing...")
+				} else {
+					slog.Debug("inner consumer: range loop broke out (cancelling context)")
+					cancel()
+					r.err = nil
+					break loop
+				}
+			case <-ctx.Done():
+				slog.Info("inner consumer: context done")
+				r.err = nil
+				break loop
+			}
+		}
+		slog.Debug("inner consumer: waiting for inner producer to exit...")
+		wg.Wait()
+		slog.Debug("inner consumer: inner producer exited")
 	}
 }
 
@@ -397,25 +348,6 @@ func (e *ExchangeType) UnmarshalJSON(b []byte) error {
 	e.Parse(value)
 	return nil
 }
-
-// // StringToExchangeTypeHookFunc is used to parse and ExchangeType from its
-// // string representation when using mapstructure.
-// func StringToExchangeTypeHookFunc() mapstructure.DecodeHookFunc {
-// 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-// 		if f.Kind() != reflect.String {
-// 			return data, nil
-// 		}
-// 		if t != reflect.TypeOf(ExchangeTypeFanout) {
-// 			return data, nil
-// 		}
-// 		var e ExchangeType
-// 		err := e.Parse(data.(string))
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		return e, nil
-// 	}
-// }
 
 // Exchange contains information about a RabbitMQ exchange.
 type Exchange struct {
