@@ -37,6 +37,51 @@ func (cmd *Playback) Execute(args []string) error {
 	}
 	slog.Debug("reading messages from recording..", "files", args)
 
+	unwrap := chain.Of4(
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+	)
+
+	ctx := context.Background()
+	files := textfile.New()
+	for line := range files.AllLinesContext(ctx, args...) {
+		var (
+			n   notification.Notification
+			err error
+		)
+		if n, err = unwrap(line); err != nil {
+			slog.Error("error processing line", "line", line)
+			continue
+		}
+		slog.Info("processed line", "line", line, "notification", n)
+
+		switch n.Summary().EventType {
+		case "identity.authenticate":
+			if n, ok := n.(*notification.Identity); ok {
+				onIdentityAuthenticate(n)
+			}
+
+		}
+
+	}
+
+	return nil
+}
+
+func onIdentityAuthenticate(n *notification.Identity) {
+	fmt.Printf("identity.authenticate: user %s\n", n.Payload.Reason.ReasonType)
+}
+
+// Execute is the real implementation of the Playback command.
+func (cmd *Playback) writeOutSingleEventsAsFiles(args []string) error {
+	if len(args) == 0 {
+		slog.Error("no input files")
+		return errors.New("no input files provided")
+	}
+	slog.Debug("reading messages from recording..", "files", args)
+
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
 	multicache := &transformers.MultiCache[string, notification.Notification]{}
 	xform := chain.Of7(
