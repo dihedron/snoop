@@ -31,9 +31,16 @@ func GetWriter(path string, truncate *bool) (io.Writer, error) {
 	}
 
 	if path == "-" {
-		slog.Info("writing to STDOUT")
+		slog.Info("STDOUT writer ready")
 		return os.Stdout, nil
 	}
+
+	// zipped := false
+	// if filepath.Ext(path) == ".gz" {
+	// 	slog.Debug("enabling GZIP compression support for output stream")
+	// 	zipped = true
+	// 	path = strings.TrimSuffix(path, ".gz")
+	// }
 
 	slog.Info("writing to file", "path", path)
 	flags := 0
@@ -49,6 +56,16 @@ func GetWriter(path string, truncate *bool) (io.Writer, error) {
 		slog.Error("error opening recorder output file in append mode", "path", path, "truncate", truncate, "flags", flags, "error", err)
 		return nil, errors.New("error opening output file")
 	}
-	slog.Debug("writer is ready", "type", fmt.Sprintf("%T", file))
+
+	// if zipped {
+	// 	// 2. Create a gzip writer.
+	// 	writer := gzip.NewWriter(file)
+	// 	slog.Debug("GZIP writer is ready")
+	// 	defer writer.Close()
+	// TODO: need to wrap the underlying file in order to flush it
+	// 	return writer, nil
+	// }
+
+	slog.Debug("writer is ready")
 	return file, nil
 }

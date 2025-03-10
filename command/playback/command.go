@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/dihedron/snoop/format"
-	"github.com/dihedron/snoop/generator/file"
+	"github.com/dihedron/snoop/generator/textfile"
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
@@ -25,8 +25,9 @@ var templ string
 
 // Playback is the command that reads message from a recording on file and
 // processes them one by one.
-// ./snoop play 20220818.amqp.messages
-type Playback struct{}
+// ./snoop playback 20220818.amqp.messages
+type Playback struct {
+}
 
 // Execute is the real implementation of the Playback command.
 func (cmd *Playback) Execute(args []string) error {
@@ -36,7 +37,6 @@ func (cmd *Playback) Execute(args []string) error {
 	}
 	slog.Debug("reading messages from recording..", "files", args)
 
-	ctx := context.Background()
 	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
 	multicache := &transformers.MultiCache[string, notification.Notification]{}
 	xform := chain.Of7(
@@ -51,7 +51,8 @@ func (cmd *Playback) Execute(args []string) error {
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	ctx := context.Background()
+	files := textfile.New()
 	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)

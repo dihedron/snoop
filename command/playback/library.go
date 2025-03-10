@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dihedron/snoop/format"
-	"github.com/dihedron/snoop/generator/file"
+	"github.com/dihedron/snoop/generator/textfile"
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
@@ -42,7 +42,7 @@ func doCountSpecificEventTypes(args []string, acceptedEvents ...string) error {
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
@@ -82,7 +82,7 @@ func doRecordSpecificEventTypesWithFormat(args []string, format string, filter f
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
@@ -115,7 +115,7 @@ func doEventTypesStats(args []string) error {
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)
@@ -151,7 +151,7 @@ func printEventsAsYAML(args []string, filter func(n notification.Notification) b
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for line := range files.AllLinesContext(ctx, args...) {
 		if value, err := xform(line); err != nil {
 			slog.Error("error processing line", "line", line)

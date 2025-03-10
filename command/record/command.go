@@ -23,7 +23,7 @@ import (
 
 // Record is the command that reads message from RabbitMQ and dumps them
 // out to standard output or to a file.
-// ./snoop record --connnection-info=tests/rabbitmq/brokerd.yaml --output=20220818.amqp.messages
+// ./snoop record --profile=_tests/snoop-lab.yaml 202508181320.messages
 type Record struct {
 	base.Command
 	// Profile contains the path to the configuration file to use to connect to

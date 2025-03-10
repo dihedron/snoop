@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/generator/integer"
+	"github.com/dihedron/snoop/generator/textfile"
 	"github.com/dihedron/snoop/test"
 )
 
 func TestConcatGenerator(t *testing.T) {
 	test.Setup(t)
-	files := file.New()
+	files := textfile.New()
 	for n := range Concat(files.AllLines("../file/a2m.txt"), files.AllLines("../file/n2z.txt")) {
 		slog.Info("received item", "value", n)
 	}
