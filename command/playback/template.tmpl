@@ -1,0 +1,93 @@
+================================================================
+{{ with .Summary -}}
+RequestID                         : {{ red .RequestID }}
+GlobalRequestID                   : {{ red .GlobalRequestID }}
+Type                              : {{ red .EventType }}
+----------------------------------------------------------------
+User ID                           : {{ green .UserID }}
+User Name                         : {{ green .UserName }}
+Project ID                        : {{ green .ProjectID }}
+Project Name                      : {{ green .ProjectName }}
+{{- end }}
+{{if hasPrefix "compute.instance." .EventType -}}
+----------------------------------------------------------------
+{{ with .Payload -}}
+VM Display Name                   : {{ yellow .DisplayName }}
+VM Hostname                       : {{ blue .Hostname }}
+Instance ID                       : {{ yellow .InstanceID }}
+Instance Type                     : {{ blue .InstanceType }}
+InstanceFlavorID                  : {{ blue .InstanceFlavorID }}
+Memory Size (Mb)                  : {{ yellow .MemoryMb }}
+Disk Size (Gb)                    : {{ yellow .DiskGb }}
+VCPUs                             : {{ yellow .VCPUs }}
+Hypervisor Name                   : {{ yellow .Host }}
+Availability Zone                 : {{ yellow .AvailabilityZone }}
+Created At                        : {{ blue .CreatedAt }}
+Terminated At                     : {{ blue .TerminatedAt }}
+Deleted At                        : {{ blue .DeletedAt }}
+Launched At                       : {{ blue .LaunchedAt }}
+ImageRefURL                       : {{ blue .ImageRefURL }}
+State                             : {{ blue .State }}
+Sub-State                         : {{ blue .StateDescription }}
+Progress                          : {{ blue .Progress }}
+AccessIPV4                        : {{ blue .AccessIPV4 }}
+AccessIPV6                        : {{ blue .AccessIPV6 }}
+Image Metadata                    : 
+{{- with .ImageMeta }}
+  Architecture                    : {{ blue .Architecture }}
+  Description                     : {{ blue .Description }}
+  CommitSha                       : {{ blue .CommitSha }}
+  HwDiskBus                       : {{ blue .HwDiskBus }}
+  HwQEMUGuestAgent                : {{ blue .HwQEMUGuestAgent }}
+  HwRngModel                      : {{ blue .HwRngModel }}
+  HwScsiModel                     : {{ blue .HwScsiModel }}
+  ImageType                       : {{ blue .ImageType }}
+  OsDistro                        : {{ blue .OsDistro }}
+  OwnerSpecifiedOpenstackMd5      : {{ blue .OwnerSpecifiedOpenstackMd5 }}
+  OwnerSpecifiedOpenstackObject   : {{ blue .OwnerSpecifiedOpenstackObject }}
+  OwnerSpecifiedOpenstackSha256   : {{ blue .OwnerSpecifiedOpenstackSha256 }}
+  MinRAM                          : {{ blue .MinRAM }}
+  MinDisk                         : {{ blue .MinDisk }}
+  DiskFormat                      : {{ blue .DiskFormat }}
+  ContainerFormat                 : {{ blue .ContainerFormat }}
+  BaseImageRef                    : {{ blue .BaseImageRef }}
+{{- end }}
+Tags                              :
+{{- range $key, $value := .Metadata }}
+{{ printf "  %-31s" $key }} : {{ yellow $value }}
+{{- end }}
+Message                           : {{ blue .Message }}
+Exception                         : {{ blue .Exception }}
+Code                              : {{ blue .Code }}
+ImageName                         : {{ blue .ImageName }}
+OldState                          : {{ blue .OldState }}
+OldTaskState                      : {{ blue .OldTaskState }}
+NewTaskState                      : {{ blue .NewTaskState }}
+AuditPeriodBeginning              : {{ blue .AuditPeriodBeginning }}
+AuditPeriodEnding                 : {{ blue .AuditPeriodEnding }}
+VolumeID                          : {{ blue .VolumeID }}
+NewInstanceType                   : {{ blue .NewInstanceType }}
+NewInstanceTypeID                 : {{ blue .NewInstanceTypeID }}
+{{ end }}
+{{- end }}
+{{if hasPrefix "identity." .EventType -}}
+----------------------------------------------------------------
+{{ with .Payload -}}
+TypeURI   : {{ blue .TypeURI }}
+EventType : {{ blue .EventType }}
+ID        : {{ blue .ID }}
+EventTime : {{ blue .EventTime }}
+Action    : {{ blue .Action }}
+Outcome   : {{ blue .Outcome }}
+Observer  : {{ blue .Observer }}
+ResourceInfo        : {{ blue .ResourceInfo }}
+Role                : {{ blue .Role }}
+Project             : {{ blue .Project }}
+User                : {{ blue .User }}
+InheritedToProjects : {{ blue .InheritedToProjects }}
+Group               : {{ blue .Group }}
+Reason              : {{ blue .Reason }}
+  Code : {{ .Reason.ReasonCode }} 
+  Type : {{ .Reason.ReasonType }}
+{{ end }}
+{{- end }}

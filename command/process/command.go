@@ -1,30 +1,113 @@
 package process
 
 import (
+	"context"
+	_ "embed"
+	"errors"
+	"fmt"
+	"io"
 	"log/slog"
+	"os"
+	"sort"
 
 	"github.com/dihedron/snoop/command/base"
+	"github.com/dihedron/snoop/generator/textfile"
+	"github.com/dihedron/snoop/openstack/amqp"
+	"github.com/dihedron/snoop/openstack/notification"
+	"github.com/dihedron/snoop/openstack/oslo"
+
+	//lint:ignore ST1001 we want to use the API in a fluent way with no clutter
+	"github.com/dihedron/snoop/transform/chain"
+	"github.com/dihedron/snoop/transform/transformers"
 )
 
-// Record is the command that reads message from RabbitMQ and dumps them
-// out to standard output or to a file.
-// ./brokerd record --configuration=tests/rabbitmq/brokerd.yaml --output=20220818.amqp.messages
+// Process is the command that reads message from RabbitMQ and processes them to
+// output events to syslog; in the process, it may record the messages to a file
+// if the --record flag is specified.
+// If --playback is specified, the command reads messages from one or more files
+// instead of RabbitMQ; if --dry-run is specified, the command simulates processing
+// without actually writing events to syslog or acknowledging incoming messages to
+// RabbitMQ.
 type Process struct {
-	base.ConfiguredCommand
-	// Output is the path to the file to write to; the default value is
-	// "<stdout>", which means that the messages will be dumped to STDOUT.
-	Output string `short:"o" long:"output" description:"The path to the file to write to, or stdout." required:"yes" default:"<stdout>"`
-	// Truncate is used to specify whether the output file (is the path
-	// refers to a file on disk) should be truncated before writing to it.
+	base.Command
+
+	// ConnectionInfo contains the path to the (optional) configuration file to use to
+	// connect to a RabbitMQ instance; if no value is provided (neither on the
+	// command line nor in the environment via the SNOOP_CONNECT variable), the
+	// application will look for a viable configuration file named .snoop.yaml
+	// under a few well-known paths: /etc, the current directory etc.
+	ConnectionInfo string `short:"c" long:"connection-info" description:"The path to the file containing the RabbitMQ connection info." optional:"yes" env:"SNOOP_CONNECT" validate:"file"`
+
+	// Record indicates the optional path to a file used for recording incoming
+	// messages. This flag is only compatible with the
+	Record *string `short:"r" long:"record" description:"The path to the file to write to (use '-' for STDOUT)." optional:"yes"`
+	// Truncate is used to specify whether the output file (if --record refers
+	// to a file on disk) should be truncated before writing to it.
 	Truncate bool `short:"t" long:"truncate" description:"Whether the output file should be truncated or appended to (default)." optional:"yes"`
-	// TODO: remove once checked
-	// Configuration string `short:"c" long:"configuration" description:"The path to the configuration file." optional:"yes"`
+	// DryRun is used to specify whether the command should be run so that it
+	// has no side effects, i.e. it simulates processing without actually writing
+	// events to syslog and acknowledging incoming messages to RabbitMQ.
+	NoSyslog bool `short:"s" long:"no-syslog" description:"Whether to run the command without emitting events to syslog." optional:"yes"`
 }
 
 // Execute is the real implementation of the Record command.
 func (cmd *Process) Execute(args []string) error {
-	slog.Debug("draining and recording messages from RabbitMQ")
+	var err error
 
+	// running from RabbitMQ, so the configuration file is mandatory
+	if cmd.ConnectionInfo == "" {
+		slog.Error("no connection info file provided")
+		return errors.New("no connection info file provided")
+	}
+
+	//
+	// prepare the writer
+	//
+	var writer io.Writer = io.Discard
+	if cmd.Record != nil && *cmd.Record != "" {
+		switch *cmd.Record {
+		case "-":
+			slog.Info("writing to STDOUT")
+			writer = os.Stdout
+		default:
+			slog.Info("writing to file", "path", *cmd.Record)
+			flags := 0
+			if cmd.Truncate {
+				slog.Debug("opening output file in truncate mode", "path", *cmd.Record)
+				flags = os.O_TRUNC | os.O_CREATE | os.O_WRONLY
+			} else {
+				slog.Debug("opening output file in append mode", "path", *cmd.Record)
+				flags = os.O_APPEND | os.O_CREATE | os.O_WRONLY
+			}
+			file, err := os.OpenFile(*cmd.Record, flags, 0600)
+			if err != nil {
+				slog.Error("error opening recorder output file in append mode", "path", *cmd.Record, "mode", cmd.Truncate, "error", err)
+				return errors.New("error opening output file")
+			}
+			defer file.Close()
+			writer = file
+		}
+	}
+	slog.Debug("writer is ready", "type", fmt.Sprintf("%T", writer))
+
+	/*
+		//
+		// if dry run, do not output to syslog nor ack the messages
+		//
+		if cmd.DryRun {
+			slog.Info("running in dry-run mode")
+			//syslog := &transformers.SysLogWriter{}
+		}
+
+		//
+		// if in playback mode, retrieve the messages from file
+		//
+		if cmd.Playback {
+			err = cmd.processFromFile(args)
+		} else {
+			err = cmd.processFromRabbitMQ()
+		}
+	*/
 	/*
 			// read configuration
 			cfg, err := helpers.LoadConfiguration(cmd.Configuration)
@@ -129,72 +212,72 @@ func (cmd *Process) Execute(args []string) error {
 			}
 			slog.Infof("record command complete: %d messages recorded", counter.Count())
 	*/
+	return err
+}
+
+func (cmd *Process) processFromFile(args []string) error {
+	var err error
+
+	slog.Debug("playing back messages from recordings...", "files", args)
+
+	ctx := context.Background()
+	stopwatch := &transformers.StopWatch[string, notification.Notification]{}
+	multicounter := &transformers.MultiCounter[notification.Notification, string]{}
+
+	//acceptedEvents := []string{"compute.instance.shutdown.end", "compute.instance.shutdown.start"}
+
+	unwrap := chain.Of7(
+		stopwatch.Start(),
+		transformers.StringToByteArray(),
+		amqp.JSONToMessage(),
+		oslo.MessageToOslo(false),
+		notification.OsloToNotification(false),
+		multicounter.Add(func(n notification.Notification) string { return n.Summary().EventType }),
+		stopwatch.Stop(),
+	)
+
+	files := textfile.New()
+	for line := range files.AllLinesContext(ctx, args...) {
+		var n notification.Notification
+
+		if n, err = unwrap(line); err != nil {
+			slog.Error("error unwrapping line", "line", line, "error", err)
+			continue
+		}
+		slog.Info("unwrapped line", "line", line, "output", n, "elapsed", stopwatch.Elapsed())
+
+		err = cmd.processNotification(n)
+		if err != nil {
+			slog.Error("error processing notification", "error", err)
+		}
+	}
+
+	stats, _ := multicounter.Count()
+	cmd.PrintStatistics(stats)
+	os.Stdout.Sync()
 	return nil
 }
 
-// // Execute is the real implementation of the Record command.
-// func (cmd *Record) Execute_Ingestor(args []string) error {
-// 	slog.Debug("draining and recording messages from RabbitMQ")
+func (cmd *Process) processFromRabbitMQ() error {
+	// TODO
+	return nil
+}
 
-// 	// read configuration
-// 	cfg, err := helpers.LoadConfiguration(cmd.Configuration)
-// 	if err != nil {
-// 		slog.Errorf("error loading configuration from %q", cmd.Configuration)
-// 		return err
-// 	}
-// 	slog.Info("configuration successfully loaded")
+func (cmd *Process) processNotification(_ notification.Notification) error {
+	// TODO
+	return nil
+}
 
-// 	// open the output stream
-// 	stream, err := helpers.OpenOutputStream(cmd.Output, cmd.Truncate)
-// 	if err != nil {
-// 		slog.Errorf("error opening output stream: %s", cmd.Output)
-// 		return err
-// 	}
-// 	defer (stream.(io.WriteCloser)).Close()
-// 	slog.Info("output stream successfully opened")
-
-// 	ingestor, err := helpers.NewRabbitMQIngestor(cfg.RabbitMQ.Servers, cfg.RabbitMQ.Bindings, cfg.RabbitMQ.Queue, cfg.RabbitMQ.Client)
-
-// 	if err != nil {
-// 		slog.Error("error creating new RabbitMQ ingestor")
-// 		return err
-// 	}
-// 	slog.Info("input ingestor successfully opened")
-
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-
-// 	// open the RabbitMQ channel
-// 	deliveries, err := ingestor.Ingest(ctx)
-// 	if err != nil {
-// 		slog.Error("error opening queue to RabbitMQ server")
-// 		return err
-// 	}
-// 	slog.Info("RabbitMQ channes ready for processing")
-
-// 	// get ready to handle signals (CTRL+C etc.) from user
-// 	signals := make(chan os.Signal, 1)
-// 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-// 	defer close(signals)
-
-// loop:
-// 	for {
-// 		select {
-// 		case sig := <-signals:
-// 			fmt.Printf("signal received: %v\n", sig)
-// 			break loop
-// 		case delivery := <-deliveries:
-// 			if delivery, ok := delivery.(amqp.Delivery); ok {
-// 				amqpMsg, err := message.NewAMQPDelivery(&delivery)
-// 				if err != nil {
-// 					slog.Error("error reading AMQP message")
-// 					delivery.Ack(false)
-// 					continue
-// 				}
-// 				fmt.Fprintf(stream, "%v\n", amqpMsg)
-// 				delivery.Ack(true)
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
+func (cmd *Process) PrintStatistics(stats map[string]int64) error {
+	keys := make([]string, len(stats))
+	i := 0
+	for k := range stats {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("%-50s: %d\n", k, stats[k])
+	}
+	return nil
+}

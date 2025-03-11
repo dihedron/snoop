@@ -1,0 +1,31 @@
+{{if hasPrefix "identity." .EventType -}}
+================================================================================
+{{ with .Summary -}}
+Type                              : {{ red .EventType }}
+RequestID                         : {{ red .RequestID }}
+GlobalRequestID                   : {{ red .GlobalRequestID }}
+--------------------------------------------------------------------------------
+User ID                           : {{ green .UserID }}
+User Name                         : {{ green .UserName }}
+Project ID                        : {{ green .ProjectID }}
+Project Name                      : {{ green .ProjectName }}
+{{ end -}}
+{{ with .Payload -}}
+TypeURI                           : {{ blue .TypeURI }}
+EventType                         : {{ blue .EventType }}
+ID                                : {{ blue .ID }}
+EventTime                         : {{ blue .EventTime }}
+Action                            : {{ blue .Action }}
+Outcome                           : {{ blue .Outcome }}
+Observer                          : {{ blue .Observer }}
+ResourceInfo                      : {{ blue .ResourceInfo }}
+Role                              : {{ blue .Role }}
+Project                           : {{ blue .Project }}
+User                              : {{ blue .User }}
+InheritedToProjects               : {{ blue .InheritedToProjects }}
+Group                             : {{ blue .Group }}
+Reason                            :
+  Code                            : {{ blue .Reason.ReasonCode }} 
+  Type                            : {{ blue .Reason.ReasonType }}
+{{ end }}
+{{- end -}}

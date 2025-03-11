@@ -1,0 +1,13 @@
+{{if hasPrefix "identity." .EventType -}}
+================================================================================
+{{ with .Summary -}}
+Type                              : {{ red .EventType }}
+{{ end -}}
+{{ with .Payload -}}
+EventTime                         : {{ blue .EventTime }}
+Action                            : {{ blue .Action }}
+Outcome                           : {{ blue .Outcome }}
+Reason code                       : {{ red .Reason.ReasonCode }} 
+Reason type                       : {{ red .Reason.ReasonType }}
+{{ end }}
+{{- end -}}

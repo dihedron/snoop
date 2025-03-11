@@ -1,0 +1,95 @@
+================================================================================
+Event Type                        : {{ red .EventType }}
+Message ID                        : {{ blue .MessageID }}
+Publisher ID                      : {{ blue .PublisherID }}
+Priority                          : {{ blue .Priority }}
+Timestamp                         : {{ blue .Timestamp }}
+Unique ID                         : {{ blue .UniqueID }}
+Context                           :                         
+  User                            : {{ blue .ContextUser }}
+  Tenant                          : {{ blue .ContextTenant }}
+  System Scope                    : {{ blue .ContextSystemScope }}
+  Project                         : {{ blue .ContextProject }}
+  Domain                          : {{ blue .ContextDomain }}
+  User Domain                     : {{ blue .ContextUserDomain }}
+  Project Domain                  : {{ blue .ContextProjectDomain }}
+  Is Admin?                       : {{ blue .ContextIsAdmin }}
+  Read Only                       : {{ blue .ContextReadOnly }}
+  Show Deleted                    : {{ blue .ContextShowDeleted }}
+  Auth Token                      : {{ blue .ContextAuthToken }}
+  Request ID                      : {{ red .ContextRequestID }}
+  Global Request ID               : {{ red .ContextGlobalRequestID }}
+  Resource UUID                   : {{ blue .ContextResourceUUID }}
+  Roles                           : {{ blue .ContextRoles }}
+  User Identity                   : {{ blue .ContextUserIdentity }}
+  Is Admin Project?               : {{ blue .ContextIsAdminProject }}
+  User ID                         : {{ red .ContextUserID }}
+  Read Deleted                    : {{ blue .ContextReadDeleted }}
+  Remote Address                  : {{ blue .ContextRemoteAddress }}
+  Quota Class                     : {{ blue .ContextQuotaClass }}
+  Tenant ID                       : {{ blue .ContextTenantID }}
+  Project ID                      : {{ red .ContextProjectID }}
+  Timestamp                       : {{ blue .ContextTimestamp }}
+  Tenant Name                     : {{ blue .ContextTenantName }}
+  Project Name                    : {{ red .ContextProjectName }}
+  User Name                       : {{ red .ContextUserName }}
+----------------------------------------------------------------
+{{ if hasPrefix "compute.instance." .EventType }}{{ with .Payload -}}
+VM Display Name                   : {{ yellow .DisplayName }}
+VM Hostname                       : {{ blue .Hostname }}
+Instance ID                       : {{ yellow .InstanceID }}
+Instance Type                     : {{ blue .InstanceType }}
+InstanceFlavorID                  : {{ blue .InstanceFlavorID }}
+Memory Size (Mb)                  : {{ yellow .MemoryMb }}
+Disk Size (Gb)                    : {{ yellow .DiskGb }}
+VCPUs                             : {{ yellow .VCPUs }}
+Hypervisor Name                   : {{ yellow .Host }}
+Availability Zone                 : {{ yellow .AvailabilityZone }}
+Created At                        : {{ blue .CreatedAt }}
+Terminated At                     : {{ blue .TerminatedAt }}
+Deleted At                        : {{ blue .DeletedAt }}
+Launched At                       : {{ blue .LaunchedAt }}
+ImageRefURL                       : {{ blue .ImageRefURL }}
+State                             : {{ blue .State }}
+Sub-State                         : {{ blue .StateDescription }}
+Progress                          : {{ blue .Progress }}
+AccessIPV4                        : {{ blue .AccessIPV4 }}
+AccessIPV6                        : {{ blue .AccessIPV6 }}
+Image Metadata                    : 
+{{- with .ImageMeta }}
+  Architecture                    : {{ blue .Architecture }}
+  Description                     : {{ blue .Description }}
+  CommitSha                       : {{ blue .CommitSha }}
+  HwDiskBus                       : {{ blue .HwDiskBus }}
+  HwQEMUGuestAgent                : {{ blue .HwQEMUGuestAgent }}
+  HwRngModel                      : {{ blue .HwRngModel }}
+  HwScsiModel                     : {{ blue .HwScsiModel }}
+  ImageType                       : {{ blue .ImageType }}
+  OsDistro                        : {{ blue .OsDistro }}
+  OwnerSpecifiedOpenstackMd5      : {{ blue .OwnerSpecifiedOpenstackMd5 }}
+  OwnerSpecifiedOpenstackObject   : {{ blue .OwnerSpecifiedOpenstackObject }}
+  OwnerSpecifiedOpenstackSha256   : {{ blue .OwnerSpecifiedOpenstackSha256 }}
+  MinRAM                          : {{ blue .MinRAM }}
+  MinDisk                         : {{ blue .MinDisk }}
+  DiskFormat                      : {{ blue .DiskFormat }}
+  ContainerFormat                 : {{ blue .ContainerFormat }}
+  BaseImageRef                    : {{ blue .BaseImageRef }}
+{{- end }}
+Tags                              :
+{{- range $key, $value := .Metadata }}
+{{ printf "  %-31s" $key }} : {{ yellow $value }}
+{{- end }}
+Message                           : {{ blue .Message }}
+Exception                         : {{ blue .Exception }}
+Code                              : {{ blue .Code }}
+ImageName                         : {{ blue .ImageName }}
+OldState                          : {{ blue .OldState }}
+OldTaskState                      : {{ blue .OldTaskState }}
+NewTaskState                      : {{ blue .NewTaskState }}
+AuditPeriodBeginning              : {{ blue .AuditPeriodBeginning }}
+AuditPeriodEnding                 : {{ blue .AuditPeriodEnding }}
+VolumeID                          : {{ blue .VolumeID }}
+NewInstanceType                   : {{ blue .NewInstanceType }}
+NewInstanceTypeID                 : {{ blue .NewInstanceTypeID }}
+{{ end }}
+{{- end }}
