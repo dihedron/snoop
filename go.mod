@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/dihedron/rawdata v1.0.1
 	github.com/fatih/color v1.18.0
-	github.com/go-playground/validator/v10 v10.25.0
+	github.com/go-playground/validator/v10 v10.26.0
 	github.com/goccy/go-json v0.10.5
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
@@ -38,7 +38,7 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
