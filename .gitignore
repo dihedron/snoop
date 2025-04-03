@@ -18,8 +18,9 @@ dist/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# Local testing directory
+# Local testing directories and files
 _tests/
+_data/
 generator/rabbitmq/.env
 output/
 

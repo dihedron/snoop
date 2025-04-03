@@ -26,7 +26,10 @@ _RULES_MK_FLAG_ENABLE_RACE=0
 #_RULES_MK_FLAG_FORCE_DEP_REBUILD=1
 #_RULES_MK_FLAG_OMIT_VCS_INFO=1
 
-include rules.mk
+include golang.mk
+include nfpm.mk
+include help.mk
+include piped.mk
 
 .PHONY: clean-cache ## remove all cached build entries
 clean-cache:
