@@ -75,11 +75,6 @@ endif
 	@echo -e "Creating $(green)DEB$(reset) package for $(green)$(_NFPM_MK_VARS_NAME)$(reset) version $(green)$(_NFPM_MK_VARS_VERSION)$(reset) (for platform $(green)$(PLATFORM)$(reset))..."
 	@NAME=$(_NFPM_MK_VARS_NAME) VERSION=$(_NFPM_MK_VARS_VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager deb --target dist/$(PLATFORM)/
 	@rm -f .piped
-# @echo -e "PLATFORM: $(PLATFORM)"
-# @echo -e "GOOS: $(GOOS)"
-# @echo -e "GOARCH: $(GOARCH)"
-# @echo -e "_RULES_MK_VARS_NAME: $(_RULES_MK_VARS_NAME)"
-# @echo -e "_RULES_MK_VARS_VERSION: $(_RULES_MK_VARS_VERSION)"
 
 #
 # nfpm-rpm packages the application in RPM format
