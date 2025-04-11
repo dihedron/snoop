@@ -249,8 +249,8 @@ compile: linux/amd64 ;
 .PHONY: release
 release: quality compile deb rpm apk
 
-.PHONY: show-build-vars
-show-build-vars: ## show actual build variables values
+.PHONY: golang-show-build-vars
+golang-show-build-vars: ## show actual build variables values
 	@echo -e "Build Variables:"
 	@echo -e " - _GOLANG_MK_VARS_NAME             : $(green)$(_GOLANG_MK_VARS_NAME)$(reset)"
 	@echo -e " - _GOLANG_MK_VARS_DESCRIPTION      : $(green)$(_GOLANG_MK_VARS_DESCRIPTION)$(reset)"
@@ -337,7 +337,7 @@ else
 	@echo -e " - race detector                   : $(yellow)disabled$(reset)"
 endif
 	@echo -e " - metadata package                : $(green)$(package)$(reset)"
-	@$(MAKE) show-build-vars
+	@$(MAKE) golang-show-build-vars
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
 			echo -e "PLATFORM: $(green)$(@)$(reset)"; \
@@ -373,6 +373,22 @@ endif
 		fi; \
 	done
 	@rm -f .piped
+
+.PHONY: golang-clean
+golang-clean: ## remove all build artifacts
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+	@echo -e "$(green)Cleaning up$(reset) directory..."
+	@rm -rf dist
+	@rm -rf fetch/server.key fetch/server.crt
+	@rm -f .piped
+
+.PHONY: golang-clean-cache ## remove all cached build entries
+golang-clean-cache:
+	@go clean -x -cache
+
+.PHONY: golang-test
+golang-test:
+	go test ./...
 
 .PHONY: quality
 quality: ## perform static analysis on the code
@@ -425,72 +441,12 @@ endif
 	done;
 	@rm -f .piped
 
-.PHONY: clean
-clean: ## remove all build artifacts
-	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-	@echo -e "$(green)Cleaning up$(reset) directory..."
-	@rm -rf dist
-	@rm -rf fetch/server.key fetch/server.crt
-	@rm -f .piped
 
-.PHONY: install
-install: ## [deprecated] install to a PREFIX (default: /usr/local/bin)
-	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-ifneq ($(shell id -u), 0)
-	@echo -e "$(red)You must be root to perform this action.$(reset)"
-else
-ifneq (x86_64, $(shell uname -m))
-	@echo -e "$(red)You must be running on x86_64 Linux to perform this action.$(reset)"
-endif
-ifeq ($(PREFIX),)
-	$(eval PREFIX="/usr/local/bin")
-endif
-ifeq ($(PLATFORM),)
-	$(eval PLATFORM=linux/amd64)
-endif
-	@echo -e "Installing $(green)$(PLATFORM)/$(_RULES_MK_VARS_NAME)$(reset) to $(PREFIX)/$(_RULES_MK_VARS_NAME)..."
-	@cp dist/$(PLATFORM)/$(_RULES_MK_VARS_NAME) $(PREFIX)
-	@chmod 755 $(PREFIX)/$(_RULES_MK_VARS_NAME)
-endif
-	@rm -f .piped
-
-.PHONY: uninstall
-uninstall: ## [deprecated] remove from a PREFIX (default: /usr/local/bin)
-	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-ifneq ($(shell id -u), 0)
-	@echo -e "$(red)You must be root to perform this action.$(reset)"
-else
-ifneq (x86_64, $(shell uname -m))
-	@echo -e "You must be running on x86_64 Linux to perform this action."
-endif
-ifeq ($(PREFIX),)
-	$(eval PREFIX="/usr/local/bin")
-endif
-	@echo "Uninstalling $(PREFIX)/$(_RULES_MK_VARS_NAME)..."
-	@rm -rf $(PREFIX)/$(_RULES_MK_VARS_NAME)
-endif
-	@rm -f .piped
-
-.PHONY: container
-container: ## create a Docker container to run containerised builds
-	@docker build -t golang-1.23.1-with-tools .
-
-.PHONY: docker-prompt
-docker-prompt: ## run a bash in the container to run builds
-	$(eval USER=$(shell id -u))
-	$(eval GROUP=$(shell id -g))
-	@docker run -it \
-	--rm \
-	--volume /etc/passwd:/etc/passwd:ro \
-	--volume /etc/group:/etc/group:ro \
-	--volume "$(PWD)":/usr/src/ \
-	--user $(USER):$(GROUP) \
-	-w /usr/src/ \
-	golang-1.23.1-with-tools \
-	/bin/bash
-
-.PHONY: supported
-supported: ## show supported build platforms
+#
+# Show all platforms supported as targets by the golang compiler.
+#
+.PHONY: golang-supported
+golang-supported: ## show supported build platforms
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "Supported build platforms:"
 	@OS=$$(uname -s); \
@@ -508,8 +464,12 @@ supported: ## show supported build platforms
 	done
 	@rm -f .piped
 
-.PHONY: setup-tools
-setup-tools: ## install all necessary tools at the latest version
+#
+# Install all necessary tools for golang development
+# and quality checks.
+#
+.PHONY: golang-setup-tools
+golang-setup-tools: ## install all necessary tools at the latest version
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@go install golang.org/x/tools/gopls@latest
 	@go install github.com/cweill/gotests/gotests@v1.6.0
