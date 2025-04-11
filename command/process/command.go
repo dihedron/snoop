@@ -11,7 +11,7 @@ import (
 	"sort"
 
 	"github.com/dihedron/snoop/command/base"
-	"github.com/dihedron/snoop/generator/file"
+	"github.com/dihedron/snoop/generator/textfile"
 	"github.com/dihedron/snoop/openstack/amqp"
 	"github.com/dihedron/snoop/openstack/notification"
 	"github.com/dihedron/snoop/openstack/oslo"
@@ -236,7 +236,7 @@ func (cmd *Process) processFromFile(args []string) error {
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for line := range files.AllLinesContext(ctx, args...) {
 		var n notification.Notification
 

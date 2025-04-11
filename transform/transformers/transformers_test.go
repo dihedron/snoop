@@ -9,9 +9,9 @@ import (
 	"github.com/dihedron/snoop/format"
 	"github.com/dihedron/snoop/generator/concat"
 	"github.com/dihedron/snoop/generator/fibonacci"
-	"github.com/dihedron/snoop/generator/file"
 	"github.com/dihedron/snoop/generator/integer"
 	"github.com/dihedron/snoop/generator/random"
+	"github.com/dihedron/snoop/generator/textfile"
 	"github.com/dihedron/snoop/test"
 	"github.com/dihedron/snoop/transform/chain"
 )
@@ -95,7 +95,7 @@ func TestFileChain(t *testing.T) {
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for value := range files.AllLines("../generator/file/test.txt") {
 		if _, err := transform(value); err != nil || counter.Count() >= 10 {
 			break
@@ -175,7 +175,7 @@ func TestCacheFromFile(t *testing.T) {
 		cache.Set(func(s string) string { return s[:1] }),
 		stopwatch.Stop(),
 	)
-	files := file.New()
+	files := textfile.New()
 	for value := range files.AllLines("../generator/file/test.txt") {
 		if _, err := transform(value); err != nil || counter.Count() >= 10 {
 			break
@@ -203,7 +203,7 @@ func TestMultipleCacheFromMultipleFiles(t *testing.T) {
 		stopwatch.Stop(),
 	)
 
-	files := file.New()
+	files := textfile.New()
 	for value := range concat.Concat(files.AllLines("../generator/file/test.txt"), files.AllLines("../generator/file/test.txt")) {
 		if _, err := transform(value); err != nil {
 			break

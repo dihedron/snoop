@@ -31,3 +31,7 @@ include rules.mk
 .PHONY: clean-cache ## remove all cached build entries
 clean-cache:
 	@go clean -x -cache
+
+.PHONY: test
+test:
+	go test ./...

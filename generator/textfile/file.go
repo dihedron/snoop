@@ -1,4 +1,4 @@
-package file
+package textfile
 
 import (
 	"bufio"
@@ -9,31 +9,31 @@ import (
 	"os"
 )
 
-type Files struct {
+type TextFiles struct {
 	err error
 }
 
-func New() *Files {
-	return &Files{}
+func New() *TextFiles {
+	return &TextFiles{}
 }
 
-func (f *Files) Err() error {
+func (f *TextFiles) Err() error {
 	return f.err
 }
 
-func (f *Files) Reset() {
+func (f *TextFiles) Reset() {
 	f.err = nil
 }
 
 // Lines uses the new Go 1.23 style generator to read the given
 // files line by line.
-func (f *Files) AllLines(paths ...string) iter.Seq[string] {
+func (f *TextFiles) AllLines(paths ...string) iter.Seq[string] {
 	return f.AllLinesContext(context.Background(), paths...)
 }
 
 // LinesContext uses the new Go 1.23 style generator to read the given
 // files line by line; if aborts when the given context is cancelled.
-func (f *Files) AllLinesContext(ctx context.Context, paths ...string) iter.Seq[string] {
+func (f *TextFiles) AllLinesContext(ctx context.Context, paths ...string) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		for _, path := range paths {
 			file, err := os.Open(path)
