@@ -14,12 +14,15 @@ import (
 )
 
 func init() {
-	slog.Error("checking .env environment variable", "name", metadata.DotEnvVarName)
+
+	lvl := slog.SetLogLoggerLevel(slog.LevelInfo)
+	slog.Info("checking .env environment variable", "name", metadata.DotEnvVarName)
 	if dotenv, ok := os.LookupEnv(metadata.DotEnvVarName); ok {
 		if err := godotenv.Load(dotenv); err != nil {
 			slog.Error("error loading .env file", "error", err)
 		}
 	}
+	slog.SetLogLoggerLevel(lvl)
 
 	const LevelNone = slog.Level(1000)
 
