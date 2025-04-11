@@ -244,24 +244,10 @@ linux/amd64: GOAMD64 ?= v3
 windows/amd64: GOAMD64 ?= v3
 
 #
-# golang-compile is the default target; it builds the 
-# application for the default platform (linux/amd64)
+# This targets builds the application for a specific platform.
 #
-.PHONY: golang-compile ## build for the default linux/amd64 platform
-golang-compile: linux/amd64 ;
-
-#
-# golang-release performs a build for the default target, 
-# a quality check and packages the application for the 
-# default platform (linux/amd64)
-#
-.PHONY: golang-release ## build, check and release in DEB, RPM and APK formats
-golang-release: quality golang-compile deb rpm apk
-
-
 %: ## replace % with one or more <goos>/<goarch> combinations, e.g. linux/amd64, to build it
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-#	@echo ""
 	@echo -e "Build Flags:"
 ifeq ($(_GOLANG_MK_FLAG_TIDY_DEPS),1)
 	@echo -e " - tidy dependencies               : $(green)enabled$(reset)"
@@ -365,7 +351,25 @@ endif
 	done
 	@rm -f .piped
 
-.PHONY: golang-clean
+#
+# golang-compile is the default target; it builds the 
+# application for the default platform (linux/amd64)
+#
+.PHONY: golang-compile 
+golang-compile: linux/amd64 ## build for the default linux/amd64 platform
+
+#
+# golang-release performs a build for the default target, 
+# a code quality check and packages the application in the
+# RPM, DEB and APK formats for the default platform (linux/amd64)
+#
+.PHONY: golang-release 
+golang-release: golang-quality golang-compile deb rpm apk ## build, check and release in DEB, RPM and APK formats
+
+#
+# golang-clean removes all build artifacts.
+#
+.PHONY: golang-clean 
 golang-clean: ## remove all build artifacts
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "$(green)Cleaning up$(reset) directory..."
@@ -373,16 +377,26 @@ golang-clean: ## remove all build artifacts
 	@rm -rf fetch/server.key fetch/server.crt
 	@rm -f .piped
 
-.PHONY: golang-clean-cache ## remove all cached build entries
-golang-clean-cache:
+#
+# golang-clean-cache removes all cached build entries
+# from the compiler's local cache.
+#
+.PHONY: golang-clean-cache 
+golang-clean-cache: ## remove all cached build entries
 	@go clean -x -cache
 
-.PHONY: golang-test
-golang-test:
+#
+# golang-test runs the tests.
+#
+.PHONY: golang-test 
+golang-test: ## run tests
 	go test ./...
 
-.PHONY: quality
-quality: ## perform static analysis on the code
+#
+# golang-quality performs static analysis on the code.
+#
+.PHONY: golang-quality
+golang-quality: ## perform static analysis on the code
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "Performing $(green)quality checks$(reset)"
 ifeq (, $(shell which govulncheck))
@@ -408,6 +422,9 @@ endif
 	@echo -e "$(green)Quality checks$(reset) done!"
 	@rm -f .piped
 
+#
+# golang-show-build-vars shows the actual build variables values.
+#
 .PHONY: golang-show-build-vars
 golang-show-build-vars: ## show actual build variables values
 	@echo -e "Build Variables:"
@@ -427,8 +444,11 @@ golang-show-build-vars: ## show actual build variables values
 	@echo -e " - _GOLANG_MK_VARS_METADATA_PACKAGE : $(green)$(_GOLANG_MK_VARS_METADATA_PACKAGE)$(reset)"
 	@echo -e " - _GOLANG_MK_VARS_DOTENV_VAR_NAME  : $(green)$(_GOLANG_MK_VARS_DOTENV_VAR_NAME)$(reset)"
 
-.PHONY: compress
-compress: ## compress all the executables with UPX (good quality)
+#
+# golang-compress compresses all the executables with UPX (good quality).
+#
+.PHONY: golang-compress
+golang-compress: ## compress all the executables with UPX (good quality)
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which upx))
 	@echo -e "Need to $(green)install UPX$(reset) first..."
@@ -439,8 +459,11 @@ endif
 	done;
 	@rm -f .piped
 
-.PHONY: extra-compress
-extra-compress: ## compress all the executables with UPX (best quality, slooow!)
+#
+# golang-extra-compress compresses all the executables with UPX (best quality, slooow!)
+#
+.PHONY: golang-extra-compress
+golang-extra-compress: ## compress all the executables with UPX (best quality, slooow!)
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which upx))
 	@echo-e  "Need to $(green)install UPX$(reset) first..."
@@ -451,9 +474,8 @@ endif
 	done;
 	@rm -f .piped
 
-
 #
-# Show all platforms supported as targets by the golang compiler.
+# golang-supported shows all platforms supported as targets by the golang compiler.
 #
 .PHONY: golang-supported
 golang-supported: ## show supported build platforms
@@ -475,7 +497,7 @@ golang-supported: ## show supported build platforms
 	@rm -f .piped
 
 #
-# Install all necessary tools for golang development
+# golang-setup-tools installs all necessary tools for golang development
 # and quality checks.
 #
 .PHONY: golang-setup-tools
