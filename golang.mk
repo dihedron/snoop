@@ -193,7 +193,7 @@ endif
 # TARGETS
 #
 
-.DEFAULT_GOAL := compile
+.DEFAULT_GOAL := golang-compile
 
 SHELL := /bin/bash
 
@@ -243,30 +243,21 @@ linux/amd64: GOAMD64 ?= v3
 #
 windows/amd64: GOAMD64 ?= v3
 
-.PHONY: compile
-compile: linux/amd64 ;
+#
+# golang-compile is the default target; it builds the 
+# application for the default platform (linux/amd64)
+#
+.PHONY: golang-compile ## build for the default linux/amd64 platform
+golang-compile: linux/amd64 ;
 
-.PHONY: release
-release: quality compile deb rpm apk
+#
+# golang-release performs a build for the default target, 
+# a quality check and packages the application for the 
+# default platform (linux/amd64)
+#
+.PHONY: golang-release ## build, check and release in DEB, RPM and APK formats
+golang-release: quality golang-compile deb rpm apk
 
-.PHONY: golang-show-build-vars
-golang-show-build-vars: ## show actual build variables values
-	@echo -e "Build Variables:"
-	@echo -e " - _GOLANG_MK_VARS_NAME             : $(green)$(_GOLANG_MK_VARS_NAME)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_DESCRIPTION      : $(green)$(_GOLANG_MK_VARS_DESCRIPTION)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_COPYRIGHT        : $(green)$(_GOLANG_MK_VARS_COPYRIGHT)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_LICENSE          : $(green)$(_GOLANG_MK_VARS_LICENSE)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_LICENSE_URL      : $(green)$(_GOLANG_MK_VARS_LICENSE_URL)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_VERSION_MAJOR    : $(green)$(_GOLANG_MK_VARS_VERSION_MAJOR)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_VERSION_MINOR    : $(green)$(_GOLANG_MK_VARS_VERSION_MINOR)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_VERSION_PATCH    : $(green)$(_GOLANG_MK_VARS_VERSION_PATCH)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_VERSION          : $(green)$(_GOLANG_MK_VARS_VERSION)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_MAINTAINER       : $(green)$(_GOLANG_MK_VARS_MAINTAINER)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_VENDOR           : $(green)$(_GOLANG_MK_VARS_VENDOR)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_PRODUCER_URL     : $(green)$(_GOLANG_MK_VARS_PRODUCER_URL)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_DOWNLOAD_URL     : $(green)$(_GOLANG_MK_VARS_DOWNLOAD_URL)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_METADATA_PACKAGE : $(green)$(_GOLANG_MK_VARS_METADATA_PACKAGE)$(reset)"
-	@echo -e " - _GOLANG_MK_VARS_DOTENV_VAR_NAME  : $(green)$(_GOLANG_MK_VARS_DOTENV_VAR_NAME)$(reset)"
 
 %: ## replace % with one or more <goos>/<goarch> combinations, e.g. linux/amd64, to build it
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
@@ -416,6 +407,25 @@ endif
 	@-gosec ./...
 	@echo -e "$(green)Quality checks$(reset) done!"
 	@rm -f .piped
+
+.PHONY: golang-show-build-vars
+golang-show-build-vars: ## show actual build variables values
+	@echo -e "Build Variables:"
+	@echo -e " - _GOLANG_MK_VARS_NAME             : $(green)$(_GOLANG_MK_VARS_NAME)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_DESCRIPTION      : $(green)$(_GOLANG_MK_VARS_DESCRIPTION)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_COPYRIGHT        : $(green)$(_GOLANG_MK_VARS_COPYRIGHT)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_LICENSE          : $(green)$(_GOLANG_MK_VARS_LICENSE)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_LICENSE_URL      : $(green)$(_GOLANG_MK_VARS_LICENSE_URL)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_VERSION_MAJOR    : $(green)$(_GOLANG_MK_VARS_VERSION_MAJOR)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_VERSION_MINOR    : $(green)$(_GOLANG_MK_VARS_VERSION_MINOR)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_VERSION_PATCH    : $(green)$(_GOLANG_MK_VARS_VERSION_PATCH)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_VERSION          : $(green)$(_GOLANG_MK_VARS_VERSION)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_MAINTAINER       : $(green)$(_GOLANG_MK_VARS_MAINTAINER)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_VENDOR           : $(green)$(_GOLANG_MK_VARS_VENDOR)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_PRODUCER_URL     : $(green)$(_GOLANG_MK_VARS_PRODUCER_URL)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_DOWNLOAD_URL     : $(green)$(_GOLANG_MK_VARS_DOWNLOAD_URL)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_METADATA_PACKAGE : $(green)$(_GOLANG_MK_VARS_METADATA_PACKAGE)$(reset)"
+	@echo -e " - _GOLANG_MK_VARS_DOTENV_VAR_NAME  : $(green)$(_GOLANG_MK_VARS_DOTENV_VAR_NAME)$(reset)"
 
 .PHONY: compress
 compress: ## compress all the executables with UPX (good quality)
