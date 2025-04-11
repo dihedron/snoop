@@ -57,27 +57,11 @@ bold:=\033[1m
 reset:=\033[0m
 endif
 
-.PHONY: nfpm-show-vars
-nfpm-show-vars: ## show actual packaging variables values
-	@echo -e "Packaging Variables:"
-	@echo -e " - _RULES_MK_VARS_NAME             : $(green)$(_RULES_MK_VARS_NAME)$(reset)"
-	@echo -e " - _RULES_MK_VARS_DESCRIPTION      : $(green)$(_RULES_MK_VARS_DESCRIPTION)$(reset)"
-	@echo -e " - _RULES_MK_VARS_COPYRIGHT        : $(green)$(_RULES_MK_VARS_COPYRIGHT)$(reset)"
-	@echo -e " - _RULES_MK_VARS_LICENSE          : $(green)$(_RULES_MK_VARS_LICENSE)$(reset)"
-	@echo -e " - _RULES_MK_VARS_LICENSE_URL      : $(green)$(_RULES_MK_VARS_LICENSE_URL)$(reset)"
-	@echo -e " - _RULES_MK_VARS_VERSION_MAJOR    : $(green)$(_RULES_MK_VARS_VERSION_MAJOR)$(reset)"
-	@echo -e " - _RULES_MK_VARS_VERSION_MINOR    : $(green)$(_RULES_MK_VARS_VERSION_MINOR)$(reset)"
-	@echo -e " - _RULES_MK_VARS_VERSION_PATCH    : $(green)$(_RULES_MK_VARS_VERSION_PATCH)$(reset)"
-	@echo -e " - _RULES_MK_VARS_VERSION          : $(green)$(_RULES_MK_VARS_VERSION)$(reset)"
-	@echo -e " - _RULES_MK_VARS_MAINTAINER       : $(green)$(_RULES_MK_VARS_MAINTAINER)$(reset)"
-	@echo -e " - _RULES_MK_VARS_VENDOR           : $(green)$(_RULES_MK_VARS_VENDOR)$(reset)"
-	@echo -e " - _RULES_MK_VARS_PRODUCER_URL     : $(green)$(_RULES_MK_VARS_PRODUCER_URL)$(reset)"
-	@echo -e " - _RULES_MK_VARS_DOWNLOAD_URL     : $(green)$(_RULES_MK_VARS_DOWNLOAD_URL)$(reset)"
-	@echo -e " - _RULES_MK_VARS_METADATA_PACKAGE : $(green)$(_RULES_MK_VARS_METADATA_PACKAGE)$(reset)"
-	@echo -e " - _RULES_MK_VARS_DOTENV_VAR_NAME  : $(green)$(_RULES_MK_VARS_DOTENV_VAR_NAME)$(reset)"
-
-.PHONY: deb
-deb: ## package in DEB format the given PLATFORM (default: linux/amd64)
+#
+# nfpm-deb packages the application in DEB format
+#
+.PHONY: nfpm-deb
+nfpm-deb: ## package in DEB format the given PLATFORM (default: linux/amd64)
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which nfpm))
 	@echo -e "Need to $(green)install nFPM$(reset) first..."
@@ -97,8 +81,11 @@ endif
 # @echo -e "_RULES_MK_VARS_NAME: $(_RULES_MK_VARS_NAME)"
 # @echo -e "_RULES_MK_VARS_VERSION: $(_RULES_MK_VARS_VERSION)"
 
-.PHONY: rpm
-rpm: ## package in RPM format the given PLATFORM (default: linux/amd64)
+#
+# nfpm-rpm packages the application in RPM format
+#
+.PHONY: nfpm-rpm
+nfpm-rpm: ## package in RPM format the given PLATFORM (default: linux/amd64)
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which nfpm))
 	@echo -e "Need to $(green)install nFPM$(reset) first..."
@@ -113,8 +100,11 @@ endif
 	@NAME=$(_NFPM_MK_VARS_NAME) VERSION=$(_NFPM_MK_VARS_VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager rpm --target dist/$(PLATFORM)/
 	@rm -f .piped
 
-.PHONY: apk
-apk: ## package in APK format the given PLATFORM (default: linux/amd64)
+#
+# nfpm-apk packages the application in APK format
+#
+.PHONY: nfpm-apk
+nfpm-apk: ## package in APK format the given PLATFORM (default: linux/amd64)
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which nfpm))
 	@echo -e "Need to $(green)install nFPM$(reset) first..."
@@ -129,3 +119,8 @@ endif
 	@NAME=$(_NFPM_MK_VARS_NAME) VERSION=$(_NFPM_MK_VARS_VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager apk --target dist/$(PLATFORM)/
 	@rm -f .piped
 
+.PHONY: nfpm-show-vars
+nfpm-show-vars: ## show actual packaging variables values
+	@echo -e "Packaging Variables:"
+	@echo -e " - _NFPM_MK_VARS_NAME               : $(green)$(_NFPM_MK_VARS_NAME)$(reset)"
+	@echo -e " - _NFPM_MK_VARS_VERSION            : $(green)$(_NFPM_MK_VARS_VERSION)$(reset)"

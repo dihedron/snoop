@@ -314,7 +314,7 @@ else
 	@echo -e " - race detector                   : $(yellow)disabled$(reset)"
 endif
 	@echo -e " - metadata package                : $(green)$(package)$(reset)"
-	@$(MAKE) golang-show-build-vars
+	@$(MAKE) golang-show-vars
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
 			echo -e "PLATFORM: $(green)$(@)$(reset)"; \
@@ -364,7 +364,7 @@ golang-compile: linux/amd64 ## build for the default linux/amd64 platform
 # RPM, DEB and APK formats for the default platform (linux/amd64)
 #
 .PHONY: golang-release 
-golang-release: golang-quality golang-compile deb rpm apk ## build, check and release in DEB, RPM and APK formats
+golang-release: golang-quality golang-compile nfpm-deb nfpm-rpm nfpm-apk ## build, check and release in DEB, RPM and APK formats
 
 #
 # golang-clean removes all build artifacts.
@@ -423,10 +423,10 @@ endif
 	@rm -f .piped
 
 #
-# golang-show-build-vars shows the actual build variables values.
+# golang-show-vars shows the actual build variables values.
 #
-.PHONY: golang-show-build-vars
-golang-show-build-vars: ## show actual build variables values
+.PHONY: golang-show-vars
+golang-show-vars: ## show actual build variables values
 	@echo -e "Build Variables:"
 	@echo -e " - _GOLANG_MK_VARS_NAME             : $(green)$(_GOLANG_MK_VARS_NAME)$(reset)"
 	@echo -e " - _GOLANG_MK_VARS_DESCRIPTION      : $(green)$(_GOLANG_MK_VARS_DESCRIPTION)$(reset)"
