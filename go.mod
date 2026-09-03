@@ -12,7 +12,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/juju/rfc/v2 v2.0.0
 	github.com/neilotoole/slogt v1.1.0
-	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/streamdal/rabbit v0.1.26
 	gopkg.in/yaml.v3 v3.0.1
